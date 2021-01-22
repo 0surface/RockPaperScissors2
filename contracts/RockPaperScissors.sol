@@ -28,6 +28,7 @@ contract RockPaperScissors is Ownable {
 
     bytes32 constant public NULL_BYTES = bytes32(0);
     uint constant public MASK_TIMESTAMP_SLACK = 10;
+    uint constant public MASK_BLOCK_SLACK = 1;
     uint constant public MIN_STAKE = 1000000000000000; //10e15 wei or 0.001 ETH
     uint constant public MIN_CUTOFF_INTERVAL = 1 hours;
     uint constant public MAX_CUTOFF_INTERVAL = 10 days;
@@ -59,7 +60,7 @@ contract RockPaperScissors is Ownable {
         require(masker != address(0), "RockPaperScissors::maskChoice:masker can not be null address");   
 
         if(maskingOnly){
-            require((block.number) + 1 >= blockNo && blockNo >= (block.number) - 1,"RockPaperScissors::maskChoice:blockNo is invalid");
+            require((block.number) + MASK_BLOCK_SLACK >= blockNo && blockNo >= (block.number) - MASK_BLOCK_SLACK,"RockPaperScissors::maskChoice:blockNo is invalid");
             require((block.timestamp).sub(MASK_TIMESTAMP_SLACK) <= maskTimestamp, "RockPaperScissors::maskChoice:maskTimestamp below minimum, use latest block timestamp");
             require((block.timestamp).add(MASK_TIMESTAMP_SLACK) >= maskTimestamp, "RockPaperScissors::maskChoice:maskTimestamp above maximum, use latest block timestamp");
         }else{            
@@ -114,7 +115,7 @@ contract RockPaperScissors is Ownable {
     
     function reveal(uint gameId, Choice choice, bytes32 mask, uint maskTimestamp) public {        
         Game storage game = games[gameId];        
-        require(block.timestamp > game.playDeadline);
+        require(game.opponentChoice != Choice.NONE || block.timestamp > game.playDeadline, "RockPaperScissors::reveal:opponent has not played or playDeadline not expired");
         require(block.timestamp <= game.revealDeadline);
         require(maskChoice(choice, mask, msg.sender, maskTimestamp, false, block.number) == game.creatorMaskedChoice);        
   

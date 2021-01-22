@@ -6,7 +6,7 @@ pragma solidity 0.6.10;
  * @dev Set & change owner
  */
 contract Ownable {
-    address private owner;
+    address public owner;
 
     event LogOwnerChanged(address indexed oldOwner, address indexed newOwner);
 

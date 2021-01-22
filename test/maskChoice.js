@@ -10,6 +10,8 @@ contract("RockPaperScissors", (accounts) => {
 
   let rockPaperScissors;
   let deployedInstanceAddress;
+  let MASK_TIMESTAMP_SLACK;
+  let MASK_BLOCK_SLACK;
   const deployer = accounts[0];
   const playerOne = accounts[1];
   const CHOICE = {
@@ -20,20 +22,23 @@ contract("RockPaperScissors", (accounts) => {
   };
   const mask = web3.utils.fromAscii("1c04ddc043e");
   const NULL_BYTES = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
 
   describe("maskChoice tests", () => {
     beforeEach("deploy a fresh contract", async () => {
       rockPaperScissors = await RockPaperScissors.new({ from: deployer });
       deployedInstanceAddress = rockPaperScissors.address;
+      MASK_TIMESTAMP_SLACK = (await rockPaperScissors.MASK_TIMESTAMP_SLACK.call()).toNumber();
+      MASK_BLOCK_SLACK = (await rockPaperScissors.MASK_BLOCK_SLACK.call()).toNumber();
+      console.log("MASK_BLOCK_SLACK", MASK_BLOCK_SLACK);
+      console.log("MASK_TIMESTAMP_SLACK", MASK_TIMESTAMP_SLACK);
     });
 
-    it("should generate a valid maskedChoice", async () => {
+    it("should generate a valid maskedChoice - Happy path", async () => {
       const block = await web3.eth.getBlock("latest");
-      const maskingTimestamp = block.timestamp;
-      const blockNo = block.number;
 
       const maskedChoice = await rockPaperScissors.contract.methods
-        .maskChoice(CHOICE.ROCK, mask, playerOne, maskingTimestamp, true, blockNo)
+        .maskChoice(CHOICE.ROCK, mask, playerOne, block.timestamp, true, block.number)
         .call({ from: playerOne });
 
       assert.isDefined(maskedChoice, "did not generate result");
@@ -42,50 +47,111 @@ contract("RockPaperScissors", (accounts) => {
 
     it("should be able to generate result from web3 soliditySha3", async () => {
       const block = await web3.eth.getBlock("latest");
-      const maskingTimestamp = block.timestamp;
-      const blockNo = block.number;
 
       const web3SoliditySha3Value = web3.utils.soliditySha3(
         { type: "address", value: deployedInstanceAddress },
         { type: "uint8", value: CHOICE.ROCK },
         { type: "bytes32", value: mask },
         { type: "address", value: playerOne },
-        { type: "uint", value: maskingTimestamp }
+        { type: "uint", value: block.timestamp }
       );
 
       const soliditykeccak256Value = await rockPaperScissors.contract.methods
-        .maskChoice(CHOICE.ROCK, mask, playerOne, maskingTimestamp, true, blockNo)
+        .maskChoice(CHOICE.ROCK, mask, playerOne, block.timestamp, true, block.number)
         .call({ from: playerOne });
 
       assert.strictEqual(web3SoliditySha3Value, soliditykeccak256Value, "web3 and keccak256 generated value don't match");
     });
 
-    //TODO: set up an array of all input and outcome combinations, run test in loop.
-
-    it("reverts with invalid maskTimestamp", async () => {
+    async function revertSituations() {
       const block = await web3.eth.getBlock("latest");
-      const maskingTimestamp = block.timestamp;
-      const blockNo = block.number;
-      const maskingOnly = true;
-      const invalidTimeStamp = maskingTimestamp + 100;
+      const no = block.number;
+      const stamp = block.timestamp;
+      return [
+        {
+          choice: CHOICE.PAPER,
+          mask: mask,
+          masker: playerOne,
+          timestamp: stamp + MASK_TIMESTAMP_SLACK + 1,
+          maskingOnly: true,
+          blockNo: no,
+          error: "RockPaperScissors::maskChoice:maskTimestamp above maximum, use latest block timestamp",
+        },
+        {
+          choice: CHOICE.PAPER,
+          mask: mask,
+          masker: playerOne,
+          timestamp: stamp - MASK_TIMESTAMP_SLACK - 1,
+          maskingOnly: true,
+          blockNo: no,
+          error: "RockPaperScissors::maskChoice:maskTimestamp below minimum, use latest block timestamp",
+        },
+        {
+          choice: CHOICE.PAPER,
+          mask: mask,
+          masker: playerOne,
+          timestamp: stamp,
+          maskingOnly: true,
+          blockNo: no + MASK_BLOCK_SLACK + 1,
+          error: "RockPaperScissors::maskChoice:blockNo is invalid",
+        },
+        {
+          choice: CHOICE.PAPER,
+          mask: mask,
+          masker: playerOne,
+          timestamp: stamp,
+          maskingOnly: true,
+          blockNo: no - MASK_BLOCK_SLACK - 1,
+          error: "RockPaperScissors::maskChoice:blockNo is invalid",
+        },
+        {
+          choice: CHOICE.PAPER,
+          mask: mask,
+          masker: playerOne,
+          timestamp: stamp,
+          maskingOnly: false,
+          blockNo: no,
+          error: "RockPaperScissors::maskChoice:Invalid maskTimestamp for reveal",
+        },
+        {
+          choice: CHOICE.NONE,
+          mask: mask,
+          masker: playerOne,
+          timestamp: stamp,
+          maskingOnly: true,
+          blockNo: no,
+          error: "RockPaperScissors::maskChoice:game move choice can not be NONE",
+        },
+        {
+          choice: CHOICE.PAPER,
+          mask: NULL_BYTES,
+          masker: playerOne,
+          timestamp: stamp,
+          maskingOnly: true,
+          blockNo: no,
+          error: "RockPaperScissors::maskChoice:mask can not be empty",
+        },
+        {
+          choice: CHOICE.PAPER,
+          mask: mask,
+          masker: NULL_ADDRESS,
+          timestamp: stamp,
+          maskingOnly: true,
+          blockNo: no,
+          error: "RockPaperScissors::maskChoice:masker can not be null address",
+        },
+      ];
+    }
 
-      await truffleAssert.reverts(
-        rockPaperScissors.contract.methods
-          .maskChoice(CHOICE.ROCK, mask, playerOne, invalidTimeStamp, maskingOnly, blockNo)
-          .call({ from: playerOne })
-      );
-    });
-
-    it("reverts when maskingOnly flag is set to false", async () => {
-      const block = await web3.eth.getBlock("latest");
-      const maskingTimestamp = block.timestamp;
-      const blockNo = block.number;
-
-      await truffleAssert.reverts(
-        rockPaperScissors.contract.methods
-          .maskChoice(CHOICE.ROCK, mask, playerOne, maskingTimestamp, false, blockNo)
-          .call({ from: playerOne })
-      );
+    it("reverts when given invalid parameters", async () => {
+      const data = await revertSituations();
+      data.forEach(async (d) => {
+        await truffleAssert.reverts(
+          rockPaperScissors.contract.methods
+            .maskChoice(d.choice, d.mask, d.masker, d.timestamp, d.maskingOnly, d.blockNo)
+            .call({ from: playerOne })
+        );
+      });
     });
   });
 });
