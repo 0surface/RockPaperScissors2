@@ -2,16 +2,14 @@ const RockPaperScissors = artifacts.require("RockPaperScissors");
 const truffleAssert = require("truffle-assertions");
 const timeHelper = require("../util/timeHelper");
 const eventAssert = require("../util/eventAssertionHelper");
-// const chai = require("chai");
-const { BN } = web3.utils.BN;
-//const { assert } = chai;
-// chai.use(require("chai-bn")(BN));
+const chai = require("chai");
+const { assert } = chai;
 
-contract("RockPaperScissors::play", (accounts) => {
+contract("RockPaperScissors", (accounts) => {
   let snapShotId;
   before(async () => {
     it("TestRPC  must have adequate number of addresses", () => {
-      //assert.isAtLeast(accounts.length, 4, "Test has enough addresses");
+      assert.isAtLeast(accounts.length, 4, "Test has enough addresses");
     });
     snapShotId = (await timeHelper.takeSnapshot()).id;
   });
@@ -55,7 +53,7 @@ contract("RockPaperScissors::play", (accounts) => {
 
       gameId = (await rockPaperScissors.latestGameId.call()).toNumber();
       const game = await rockPaperScissors.games.call(gameId);
-      //assert.isDefined(game, "beforeEach - game has not been written to storage");
+      assert.isDefined(game, "beforeEach - game has not been written to storage");
 
       /*advance block & timestamp*/
       await timeHelper.advanceTimeAndBlock(timestampSkipSeconds);
@@ -88,11 +86,11 @@ contract("RockPaperScissors::play", (accounts) => {
     }
 
     it("reverts when given invalid parameters", async () => {
-      // revertSituations().forEach(async (d) => {
-      //   await truffleAssert.reverts(
-      //     rockPaperScissors.contract.methods.play(gameId, d.choice).send({ from: d.msgsender, value: d.msgvalue, gas: gas })
-      //   );
-      // });
+      revertSituations().forEach(async (d) => {
+        await truffleAssert.reverts(
+          rockPaperScissors.contract.methods.play(gameId, d.choice).send({ from: d.msgsender, value: d.msgvalue, gas: gas })
+        );
+      });
     });
 
     it("should play and set choice to storage", async () => {
@@ -105,7 +103,7 @@ contract("RockPaperScissors::play", (accounts) => {
         .send({ from: opponent, value: MIN_STAKE, gas });
 
       //Assert
-      //assert.isDefined(txReceipt, "transaction is not mined");
+      assert.isDefined(txReceipt, "transaction is not mined");
       const game = await rockPaperScissors.games.call(gameId);
       assert.strictEqual(Number(game.opponentChoice), expected);
     });

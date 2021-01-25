@@ -2,12 +2,10 @@ const RockPaperScissors = artifacts.require("RockPaperScissors");
 const truffleAssert = require("truffle-assertions");
 const timeHelper = require("../util/timeHelper");
 const eventAssert = require("../util/eventAssertionHelper");
-// const chai = require("chai");
-const { BN } = web3.utils.BN;
-// const { assert } = chai;
-// chai.use(require("chai-bn")(BN));
+const chai = require("chai");
+const { assert } = chai;
 
-contract("RockPaperScissors::reveal", (accounts) => {
+contract("RockPaperScissors", (accounts) => {
   let snapShotId;
   before(async () => {
     it("TestRPC  must have adequate number of addresses", () => {
@@ -62,7 +60,7 @@ contract("RockPaperScissors::reveal", (accounts) => {
 
       gameId = (await rockPaperScissors.latestGameId.call()).toNumber();
       const game = await rockPaperScissors.games.call(gameId);
-      //assert.isDefined(game, "beforeEach - game has not been written to storage");
+      assert.isDefined(game, "beforeEach - game has not been written to storage");
 
       playDeadline = Number(game.playDeadline);
       revealDeadline = Number(game.revealDeadline);
@@ -116,7 +114,6 @@ contract("RockPaperScissors::reveal", (accounts) => {
     it("reverts when block.timestamp is less than game's playDeadline", async () => {
       //Arrange
       const blockTimestamp = (await web3.eth.getBlock("latest")).timestamp;
-      //console.log("blockTimestamp < playDeadline:- ", blockTimestamp, playDeadline);
       assert.isTrue(blockTimestamp < playDeadline, "Arrange error: block.timestamp is not less than game's playDeadline");
 
       //Assert
@@ -131,7 +128,6 @@ contract("RockPaperScissors::reveal", (accounts) => {
 
       //Act
       const blockTimestamp = (await web3.eth.getBlock("latest")).timestamp;
-      //console.log("blockTimestamp > revealDeadline:- ", blockTimestamp, revealDeadline);
       assert.isTrue(blockTimestamp > revealDeadline, "Arrange error: block.timestamp is not greater than game's revealDeadline");
 
       //Assert
@@ -174,7 +170,7 @@ contract("RockPaperScissors::reveal", (accounts) => {
 
     it("should reveal and delete game storage struct", async () => {
       //Arrange
-      await playGame(MIN_CUTOFF_INTERVAL + 1);
+      await playGame(MIN_CUTOFF_INTERVAL);
 
       //Act
       const txReceipt = await rockPaperScissors.contract.methods
@@ -191,7 +187,7 @@ contract("RockPaperScissors::reveal", (accounts) => {
 
     it("should emit LogGameFinished event", async () => {
       //Arrange
-      await playGame(MIN_CUTOFF_INTERVAL + 1);
+      await playGame(MIN_CUTOFF_INTERVAL);
 
       //Act
       const txReceipt = await rockPaperScissors.contract.methods

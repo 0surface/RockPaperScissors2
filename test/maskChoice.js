@@ -1,11 +1,13 @@
 const RockPaperScissors = artifacts.require("RockPaperScissors");
 const truffleAssert = require("truffle-assertions");
 const timeHelper = require("../util/timeHelper");
+const chai = require("chai");
+const { assert } = chai;
 
-contract("RockPaperScissors::maskChoice", (accounts) => {
+contract("RockPaperScissors", (accounts) => {
   let snapShotId;
   before("sdfs", async () => {
-    it("TestRPC  must have adequate number of addresses", () => {
+    it("TestRPC  must have adequate number of addresses", async () => {
       assert.isAtLeast(accounts.length, 2, "Test has enough addresses");
     });
     snapShotId = (await timeHelper.takeSnapshot()).id;

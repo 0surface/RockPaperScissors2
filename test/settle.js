@@ -2,16 +2,14 @@ const RockPaperScissors = artifacts.require("RockPaperScissors");
 const truffleAssert = require("truffle-assertions");
 const timeHelper = require("../util/timeHelper");
 const eventAssert = require("../util/eventAssertionHelper");
-//const chai = require("chai");
-const { BN } = web3.utils.BN;
-// const { assert } = chai;
-// chai.use(require("chai-bn")(BN));
+const chai = require("chai");
+const { assert } = chai;
 
-contract("RockPaperScissors::settle", (accounts) => {
+contract("RockPaperScissors", (accounts) => {
   let snapShotId;
   before(async () => {
     it("TestRPC  must have adequate number of addresses", () => {
-      //assert.isAtLeast(accounts.length, 3, "Test has enough addresses");
+      assert.isAtLeast(accounts.length, 3, "Test has enough addresses");
     });
     snapShotId = (await timeHelper.takeSnapshot()).id;
   });

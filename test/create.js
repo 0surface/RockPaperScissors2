@@ -2,13 +2,10 @@ const RockPaperScissors = artifacts.require("RockPaperScissors");
 const truffleAssert = require("truffle-assertions");
 const timeHelper = require("../util/timeHelper");
 const eventAssert = require("../util/eventAssertionHelper");
+const chai = require("chai");
+const { assert } = chai;
 
-//const chai = require("chai");
-const { BN } = web3.utils.BN;
-//const { assert } = chai;
-//chai.use(require("chai-bn")(BN));
-
-contract("RockPaperScissors::create", (accounts) => {
+contract("RockPaperScissors", (accounts) => {
   let snapShotId;
   before(async () => {
     it("TestRPC  must have adequate number of addresses", () => {
@@ -32,7 +29,6 @@ contract("RockPaperScissors::create", (accounts) => {
     PAPER: 2,
     SCISSORS: 3,
   };
-  const OUTCOME = { NONE: 0, DRAW: 1, WIN: 2, LOSE: 3 };
   const mask = web3.utils.fromAscii("1c04ddc043e");
   const NULL_BYTES = "0x0000000000000000000000000000000000000000000000000000000000000000";
   const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
