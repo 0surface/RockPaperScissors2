@@ -64,7 +64,7 @@ contract RockPaperScissors is Ownable {
             require((block.timestamp).sub(MASK_TIMESTAMP_SLACK) <= maskTimestamp, "RockPaperScissors::maskChoice:maskTimestamp below minimum, use latest block timestamp");
             require((block.timestamp).add(MASK_TIMESTAMP_SLACK) >= maskTimestamp, "RockPaperScissors::maskChoice:maskTimestamp above maximum, use latest block timestamp");
         }else{            
-            require(maskTimestamp >= (block.timestamp).add(MIN_CUTOFF_INTERVAL), "RockPaperScissors::maskChoice:Invalid maskTimestamp for reveal");
+            require( block.timestamp >= (maskTimestamp).add(MIN_CUTOFF_INTERVAL), "RockPaperScissors::maskChoice:Invalid maskTimestamp for reveal");
         }
        
         return keccak256(abi.encodePacked(address(this), choice, mask, masker, maskTimestamp));
@@ -98,8 +98,8 @@ contract RockPaperScissors is Ownable {
 
     function play(uint gameId, Choice choice) payable public  {
         require(Choice.NONE != choice);
-        require(block.timestamp <= games[gameId].playDeadline); //SLOAD
         require(msg.sender == games[gameId].opponent); //SLOAD
+        require(block.timestamp <= games[gameId].playDeadline); //SLOAD        
 
         uint balance = winnings[msg.sender]; //SLOAD
         uint newBalance = balance.add(msg.value).sub(games[gameId].stake, "RockPaperScissors::play:Insuffcient balance to stake"); //SLOAD
@@ -117,7 +117,7 @@ contract RockPaperScissors is Ownable {
         Game storage game = games[gameId];        
         require(game.opponentChoice != Choice.NONE || block.timestamp > game.playDeadline, "RockPaperScissors::reveal:opponent has not played or playDeadline not expired");
         require(block.timestamp <= game.revealDeadline);
-        require(maskChoice(choice, mask, msg.sender, maskTimestamp, false, block.number) == game.creatorMaskedChoice);        
+        require(maskChoice(choice, mask, msg.sender, maskTimestamp, false, block.number) == game.creatorMaskedChoice, "RockPaperScissors::reveal:masked choice does not match");        
   
         finish(gameId, resolve(choice, game.opponentChoice), game.creator, game.opponent, game.stake);
         delete games[gameId];
