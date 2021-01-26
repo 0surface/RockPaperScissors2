@@ -147,6 +147,19 @@ contract("RockPaperScissors", (accounts) => {
     it("reverts when given invalid parameters", async () => {
       const data = await revertSituations();
       data.forEach(async (d) => {
+        it(d.error, async () => {
+          await truffleAssert.reverts(
+            rockPaperScissors.contract.methods
+              .maskChoice(d.choice, d.mask, d.masker, d.timestamp, d.maskingOnly, d.blockNo)
+              .call({ from: maskerAddress })
+          );
+        });
+      });
+    });
+
+    it("reverts when given invalid parameters", async () => {
+      const data = await revertSituations();
+      data.forEach(async (d) => {
         await truffleAssert.reverts(
           rockPaperScissors.contract.methods
             .maskChoice(d.choice, d.mask, d.masker, d.timestamp, d.maskingOnly, d.blockNo)

@@ -39,7 +39,7 @@ contract("RockPaperScissors::resolve", (accounts) => {
     { c1: CHOICE.NONE, c2: CHOICE.ROCK, r: OUTCOME.LOSE },
     { c1: CHOICE.NONE, c2: CHOICE.PAPER, r: OUTCOME.LOSE },
     { c1: CHOICE.NONE, c2: CHOICE.SCISSORS, r: OUTCOME.LOSE },
-    //should never happen
+    //player1 did not reveal, player2 did not play
     { c1: CHOICE.NONE, c2: CHOICE.NONE, r: OUTCOME.WIN },
   ];
 
@@ -48,10 +48,10 @@ contract("RockPaperScissors::resolve", (accounts) => {
       rockPaperScissors = await RockPaperScissors.new({ from: deployer });
     });
 
-    it("should resolve game outcome", async () => {
-      testData.forEach(async (d) => {
+    testData.forEach(async (d) => {
+      it(`Given [${d.c1}, ${d.c2}], resolves to : ${d.r}`, async () => {
         const result = await rockPaperScissors.contract.methods.resolve(d.c1, d.c2).call({ from: deployer });
-        assert.equal(d.r, Number(result));
+        assert.strictEqual(d.r, Number(result), `Error  outcome :${Number(result)} given choice1:${d.c1}, choice2: ${d.c2}`);
       });
     });
 

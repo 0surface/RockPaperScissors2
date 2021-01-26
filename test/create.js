@@ -42,6 +42,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MIN_CUTOFF_INTERVAL,
         msgsender: creator,
         msgvalue: MIN_STAKE,
+        error: "creator and opponent address can not identical",
       },
       {
         opponent: NULL_ADDRESS,
@@ -50,6 +51,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MIN_CUTOFF_INTERVAL,
         msgsender: creator,
         msgvalue: MIN_STAKE,
+        error: "oppponent address can not be empty",
       },
       {
         opponent: opponent,
@@ -58,6 +60,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MIN_CUTOFF_INTERVAL,
         msgsender: creator,
         msgvalue: MIN_STAKE,
+        error: "masked choice can not be empty",
       },
       {
         opponent: opponent,
@@ -66,6 +69,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MIN_CUTOFF_INTERVAL,
         msgsender: creator,
         msgvalue: MIN_STAKE > 0 ? MIN_STAKE - 1 : 0,
+        error: "insufficent balance to stake",
       },
       {
         opponent: opponent,
@@ -74,6 +78,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MIN_CUTOFF_INTERVAL - 1,
         msgsender: creator,
         msgvalue: MIN_STAKE,
+        error: "cut off deadline interval below minimum",
       },
       {
         opponent: opponent,
@@ -82,6 +87,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MAX_CUTOFF_INTERVAL + 1,
         msgsender: creator,
         msgvalue: MIN_STAKE,
+        error: "cut off deadline interval above maximum",
       },
     ];
   }
@@ -101,11 +107,13 @@ contract("RockPaperScissors", (accounts) => {
 
     it("reverts when given invalid parameters", async () => {
       revertSituations().forEach(async (d) => {
-        await truffleAssert.reverts(
-          rockPaperScissors.contract.methods
-            .create(d.opponent, d.maskedChoice, d.toStake, d.cutOff)
-            .send({ from: d.msgsender, value: d.msgvalue })
-        );
+        it(d.error, async () => {
+          await truffleAssert.reverts(
+            rockPaperScissors.contract.methods
+              .create(d.opponent, d.maskedChoice, d.toStake, d.cutOff)
+              .send({ from: d.msgsender, value: d.msgvalue })
+          );
+        });
       });
     });
 

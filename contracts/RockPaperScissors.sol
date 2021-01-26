@@ -55,16 +55,15 @@ contract RockPaperScissors is Ownable {
      public view 
      returns (bytes32 maskedChoice)
      {
-        require(choice != Choice.NONE, "RockPaperScissors::maskChoice:game move choice can not be NONE");
-        require(mask != NULL_BYTES, "RockPaperScissors::maskChoice:mask can not be empty");
-        require(masker != address(0), "RockPaperScissors::maskChoice:masker can not be null address");   
-
-        if(maskingOnly){
+         if(maskingOnly){
+            require(choice != Choice.NONE, "RockPaperScissors::maskChoice:game move choice can not be NONE");
+            require(mask != NULL_BYTES, "RockPaperScissors::maskChoice:mask can not be empty");
+            require(masker != address(0), "RockPaperScissors::maskChoice:masker can not be null address");
             require((block.number) + MASK_BLOCK_SLACK >= blockNo && blockNo >= (block.number) - MASK_BLOCK_SLACK,"RockPaperScissors::maskChoice:blockNo is invalid");
             require((block.timestamp).sub(MASK_TIMESTAMP_SLACK) <= maskTimestamp, "RockPaperScissors::maskChoice:maskTimestamp below minimum, use latest block timestamp");
             require((block.timestamp).add(MASK_TIMESTAMP_SLACK) >= maskTimestamp, "RockPaperScissors::maskChoice:maskTimestamp above maximum, use latest block timestamp");
         }else{            
-            require( block.timestamp >= (maskTimestamp).add(MIN_CUTOFF_INTERVAL), "RockPaperScissors::maskChoice:Invalid maskTimestamp for reveal");
+            require(block.timestamp >= (maskTimestamp).add(MIN_CUTOFF_INTERVAL), "RockPaperScissors::maskChoice:Invalid maskTimestamp for reveal");
         }
        
         return keccak256(abi.encodePacked(address(this), choice, mask, masker, maskTimestamp));
@@ -151,13 +150,18 @@ contract RockPaperScissors is Ownable {
         emit LogGameFinished(gameId, outcome, pay);
     }   
 
-    function resolve(Choice creatorChoice, Choice opponentChoice) public pure  returns(Outcome outcome){
-        if(opponentChoice == Choice.NONE){
-            return Outcome.WIN;
-        }else if(opponentChoice != Choice.NONE && creatorChoice == Choice.NONE){
-            return Outcome.LOSE;
-        }else{        
-            return Outcome(SafeMath.mod(uint(creatorChoice).add(3).sub(uint(opponentChoice)), 3).add(1));
+    function resolve(Choice creatorChoice, Choice opponentChoice) public pure returns(Outcome outcome){
+        if(creatorChoice != Choice.NONE )
+        {
+            return opponentChoice != Choice.NONE ? 
+                Outcome(SafeMath.mod(uint(creatorChoice).add(3).sub(uint(opponentChoice)), 3).add(1))
+               :Outcome.WIN;
+        }
+        else
+        {
+            return opponentChoice != Choice.NONE ? 
+                Outcome.LOSE
+               :Outcome.WIN;
         }
     }
 
