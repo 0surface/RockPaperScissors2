@@ -33,8 +33,7 @@ contract RockPaperScissors is Ownable {
     uint constant public MAX_CUTOFF_INTERVAL = 10 days;
 
     event LogGameCreated(bytes32 indexed gameId, address indexed opponent, uint playDeadline, uint staked);
-    event LogGamePlayed(bytes32 indexed gameId, address indexed player, Choice choice);
-    event LogChoiceRevealed(bytes32 indexed gameId, address indexed revealer, Choice choice); 
+    event LogGamePlayed(bytes32 indexed gameId, address indexed player, Choice choice);    
     event LogWinningsBalanceChanged(address indexed player, uint old, uint latest);
     event LogGameFinished(bytes32 indexed gameId, Outcome indexed outcome, uint stake, address settler);
     event LogWithdrawal(address indexed withdrawer, uint withdrawn);
