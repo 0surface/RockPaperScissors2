@@ -18,12 +18,9 @@ contract("RockPaperScissors", (accounts) => {
   });
 
   let rockPaperScissors;
-  let MIN_STAKE;
   let MIN_CUTOFF_INTERVAL;
   let maskTimestamp;
-  let maskedChoice;
   let gameId;
-  const timestampSkipSeconds = 15;
   const deployer = accounts[0];
   const creator = accounts[1];
   const opponent = accounts[2];
@@ -35,7 +32,6 @@ contract("RockPaperScissors", (accounts) => {
     PAPER: 2,
     SCISSORS: 3,
   };
-  const OUTCOME = { NONE: 0, DRAW: 1, WIN: 2, LOSE: 3 };
   const mask = web3.utils.fromAscii("1c04ddc043e");
   const _stake = web3.utils.toWei("0.01", "ether");
 
@@ -43,20 +39,19 @@ contract("RockPaperScissors", (accounts) => {
     async function maskChoice(_choice) {
       const block = await web3.eth.getBlock("latest");
       maskTimestamp = block.timestamp;
-      maskedChoice = await rockPaperScissors.contract.methods
+      return await rockPaperScissors.contract.methods
         .maskChoice(_choice, mask, creator, maskTimestamp, true, block.number)
         .call({ from: creator });
-      return maskedChoice;
     }
 
     async function createGame(_maskedChoice) {
+      gameId = _maskedChoice;
       await rockPaperScissors.contract.methods
         .create(opponent, _maskedChoice, _stake, MIN_CUTOFF_INTERVAL)
         .send({ from: creator, value: _stake, gas: gas });
     }
 
     async function setGameVariables() {
-      gameId = (await rockPaperScissors.latestGameId.call()).toNumber();
       const game = await rockPaperScissors.games.call(gameId);
       assert.isDefined(game, "game has not been written to storage");
 

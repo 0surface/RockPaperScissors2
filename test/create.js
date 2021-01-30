@@ -156,9 +156,6 @@ contract("RockPaperScissors", (accounts) => {
     });
 
     it("should create and set game to storage", async () => {
-      //Arrange
-      const priorId = (await rockPaperScissors.latestGameId.call()).toNumber();
-
       //Act
       const txReceipt = await rockPaperScissors.contract.methods
         .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
@@ -166,7 +163,7 @@ contract("RockPaperScissors", (accounts) => {
 
       //Assert
       assert.isDefined(txReceipt, "transaction is not mined");
-      const game = await rockPaperScissors.games.call(priorId + 1);
+      const game = await rockPaperScissors.games.call(maskedChoice);
       assert.isDefined(game, "game has not been written to storage");
       const txTimestamp = (await web3.eth.getBlock(txReceipt.blockNumber)).timestamp;
 
@@ -183,12 +180,11 @@ contract("RockPaperScissors", (accounts) => {
         .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
         .send({ from: creator, value: MIN_STAKE, gas });
 
-      const gameId = await rockPaperScissors.latestGameId.call();
       const txTimestamp = (await web3.eth.getBlock(txReceipt.blockNumber)).timestamp;
 
       //Assert
       eventAssert.eventIsEmitted(txReceipt, "LogGameCreated");
-      eventAssert.parameterIsValid(txReceipt, "LogGameCreated", "gameId", gameId, "LogGameCreated gameId incorrect");
+      eventAssert.parameterIsValid(txReceipt, "LogGameCreated", "gameId", maskedChoice, "LogGameCreated gameId incorrect");
       eventAssert.parameterIsValid(txReceipt, "LogGameCreated", "opponent", opponent, "LogGameCreated opponent incorrect");
       eventAssert.parameterIsValid(
         txReceipt,

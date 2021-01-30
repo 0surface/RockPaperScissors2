@@ -6,8 +6,7 @@ import "./SafeMath.sol";
 
 contract RockPaperScissors is Ownable {
     using SafeMath for uint;
-
-    uint public latestGameId;
+    
     struct Game {
         uint stake; 
         uint playDeadline;
@@ -20,7 +19,7 @@ contract RockPaperScissors is Ownable {
         address opponent;
         Choice opponentChoice;               
     }
-    mapping(uint => Game) public games;
+    mapping(bytes32 => Game) public games;
     mapping(address => uint) public winnings;
 
     enum Choice {NONE, ROCK, PAPER, SCISSORS}
@@ -33,11 +32,11 @@ contract RockPaperScissors is Ownable {
     uint constant public MIN_CUTOFF_INTERVAL = 1 hours;
     uint constant public MAX_CUTOFF_INTERVAL = 10 days;
 
-    event LogGameCreated(uint indexed gameId, address indexed opponent, uint playDeadline, uint staked);
-    event LogGamePlayed(uint indexed gameId, address indexed player, Choice choice);
-    event LogChoiceRevealed(uint indexed gameId, address indexed revealer, Choice choice); 
+    event LogGameCreated(bytes32 indexed gameId, address indexed opponent, uint playDeadline, uint staked);
+    event LogGamePlayed(bytes32 indexed gameId, address indexed player, Choice choice);
+    event LogChoiceRevealed(bytes32 indexed gameId, address indexed revealer, Choice choice); 
     event LogWinningsBalanceChanged(address indexed player, uint old, uint latest);
-    event LogGameFinished(uint indexed gameId, Outcome indexed outcome, uint stake, address settler);
+    event LogGameFinished(bytes32 indexed gameId, Outcome indexed outcome, uint stake, address settler);
     event LogWithdrawal(address indexed withdrawer, uint withdrawn);
 
     constructor() public {} 
@@ -85,7 +84,7 @@ contract RockPaperScissors is Ownable {
         }
 
         uint _playDeadline = block.timestamp.add(playCutoffInterval);
-        Game storage game = games[latestGameId += 1];//SSTORE, SLOAD
+        Game storage game = games[maskedChoice];//SSTORE, SLOAD
         game.creator = msg.sender; //SSTORE
         game.stake = toStake; //SSTORE        
         game.creatorMaskedChoice = maskedChoice; //SSTORE
@@ -93,10 +92,10 @@ contract RockPaperScissors is Ownable {
         game.playDeadline = _playDeadline; //SSTORE
         game.revealDeadline = _playDeadline.add(playCutoffInterval); //SSTORE
 
-        emit LogGameCreated(latestGameId, opponent, _playDeadline, toStake);         
+        emit LogGameCreated(maskedChoice, opponent, _playDeadline, toStake);         
     }
 
-    function play(uint gameId, Choice choice) payable public  {
+    function play(bytes32  gameId, Choice choice) payable public  {
         require(Choice.NONE != choice);
         require(msg.sender == games[gameId].opponent); //SLOAD
         require(block.timestamp <= games[gameId].playDeadline); //SLOAD        
@@ -113,7 +112,7 @@ contract RockPaperScissors is Ownable {
         LogGamePlayed(gameId, msg.sender, choice);
     }
     
-    function reveal(uint gameId, Choice choice, bytes32 mask, uint maskTimestamp) public {        
+    function reveal(bytes32  gameId, Choice choice, bytes32 mask, uint maskTimestamp) public {        
         Game storage game = games[gameId];        
         require(game.opponentChoice != Choice.NONE || block.timestamp > game.playDeadline, "RockPaperScissors::reveal:opponent has not played or playDeadline not expired");
         require(block.timestamp <= game.revealDeadline);
@@ -123,14 +122,14 @@ contract RockPaperScissors is Ownable {
         delete games[gameId];
     }  
 
-    function settle(uint gameId) public  {
+    function settle(bytes32  gameId) public  {
         require(block.timestamp > games[gameId].revealDeadline);
         Game storage game = games[gameId];
         finish(gameId, resolve(game.creatorChoice, game.opponentChoice), game.creator, game.opponent, game.stake);// 5 * SLOAD
         delete games[gameId]; 
     }
     
-    function finish(uint gameId, Outcome outcome, address creator, address opponent, uint pay) internal  {
+    function finish(bytes32  gameId, Outcome outcome, address creator, address opponent, uint pay) internal  {
         bool isDraw = outcome == Outcome.DRAW;
         bool isNone = outcome == Outcome.NONE;
 

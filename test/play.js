@@ -45,13 +45,13 @@ contract("RockPaperScissors", (accounts) => {
       maskedChoice = await rockPaperScissors.contract.methods
         .maskChoice(CHOICE.ROCK, mask, creator, block.timestamp, true, block.number)
         .call({ from: creator });
+      gameId = maskedChoice;
 
       /*create game*/
       const txReceipt = await rockPaperScissors.contract.methods
         .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
         .send({ from: creator, value: MIN_STAKE, gas: gas });
 
-      gameId = (await rockPaperScissors.latestGameId.call()).toNumber();
       const game = await rockPaperScissors.games.call(gameId);
       assert.isDefined(game, "beforeEach - game has not been written to storage");
 
