@@ -75,6 +75,7 @@ contract RockPaperScissors is Ownable {
         require(toStake >= MIN_STAKE);
         require(playCutoffInterval >= MIN_CUTOFF_INTERVAL);
         require(playCutoffInterval <= MAX_CUTOFF_INTERVAL);
+        require(games[maskedChoice].playDeadline == 0);
 
         uint balance = winnings[msg.sender]; //SLOAD
         uint newBalance = balance.add(msg.value).sub(toStake, "RockPaperScissors::create:Insuffcient balance to stake"); //SLOAD

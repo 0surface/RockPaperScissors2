@@ -139,6 +139,20 @@ contract("RockPaperScissors", (accounts) => {
       }
     });
 
+    it("reverts if a game with gameId already exists", async () => {
+      //Arrange
+      await rockPaperScissors.contract.methods
+        .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+        .send({ from: creator, value: MIN_STAKE, gas });
+
+      //Assert
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+          .send({ from: creator, value: MIN_STAKE, gas })
+      );
+    });
+
     it("reverts when cut off deadline interval is below minimum", async () => {
       await truffleAssert.reverts(
         rockPaperScissors.contract.methods
