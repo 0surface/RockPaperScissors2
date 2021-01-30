@@ -105,16 +105,54 @@ contract("RockPaperScissors", (accounts) => {
         .call({ from: creator });
     });
 
-    it("reverts when given invalid parameters", async () => {
-      revertSituations().forEach(async (d) => {
-        it(d.error, async () => {
-          await truffleAssert.reverts(
-            rockPaperScissors.contract.methods
-              .create(d.opponent, d.maskedChoice, d.toStake, d.cutOff)
-              .send({ from: d.msgsender, value: d.msgvalue })
-          );
-        });
-      });
+    it("reverts oppponent address is empty", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(NULL_ADDRESS, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+          .send({ from: creator, value: MIN_STAKE })
+      );
+    });
+
+    it("reverts when creator and opponent address can not identical ", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(creator, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+          .send({ from: creator, value: MIN_STAKE })
+      );
+    });
+
+    it("reverts when masked choice is empty", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(opponent, NULL_BYTES, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+          .send({ from: creator, value: MIN_STAKE })
+      );
+    });
+
+    it("reverts when given insufficent balance to stake", async () => {
+      if (MIN_STAKE > 0) {
+        await truffleAssert.reverts(
+          rockPaperScissors.contract.methods
+            .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+            .send({ from: creator, value: MIN_STAKE - 1 })
+        );
+      }
+    });
+
+    it("reverts when cut off deadline interval is below minimum", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL - 1)
+          .send({ from: creator, value: MIN_STAKE })
+      );
+    });
+
+    it("reverts when cut off deadline interval is above maximum", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(opponent, maskedChoice, MIN_STAKE, MAX_CUTOFF_INTERVAL + 1)
+          .send({ from: creator, value: MIN_STAKE })
+      );
     });
 
     it("should create and set game to storage", async () => {

@@ -33,12 +33,12 @@ contract RockPaperScissors is Ownable {
     uint constant public MIN_CUTOFF_INTERVAL = 1 hours;
     uint constant public MAX_CUTOFF_INTERVAL = 10 days;
 
-    event LogGameCreated(uint indexed gameId, address indexed opponent, uint indexed playDeadline, uint staked);
-    event LogGamePlayed(uint indexed gameId, address indexed player, Choice indexed choice);
+    event LogGameCreated(uint indexed gameId, address indexed opponent, uint playDeadline, uint staked);
+    event LogGamePlayed(uint indexed gameId, address indexed player, Choice choice);
     event LogChoiceRevealed(uint indexed gameId, address indexed revealer, Choice choice); 
-    event LogWinningsBalanceChanged(address indexed player, uint indexed old, uint indexed latest);
-    event LogGameFinished(uint indexed gameId, Outcome indexed outcome, uint indexed stake);
-    event LogWithdrawal(address indexed withdrawer, uint indexed withdrawn);
+    event LogWinningsBalanceChanged(address indexed player, uint old, uint latest);
+    event LogGameFinished(uint indexed gameId, Outcome indexed outcome, uint stake, address settler);
+    event LogWithdrawal(address indexed withdrawer, uint withdrawn);
 
     constructor() public {} 
 
@@ -59,7 +59,7 @@ contract RockPaperScissors is Ownable {
             require(choice != Choice.NONE, "RockPaperScissors::maskChoice:game move choice can not be NONE");
             require(mask != NULL_BYTES, "RockPaperScissors::maskChoice:mask can not be empty");
             require(masker != address(0), "RockPaperScissors::maskChoice:masker can not be null address");
-            require((block.number) + MASK_BLOCK_SLACK >= blockNo && blockNo >= (block.number) - MASK_BLOCK_SLACK,"RockPaperScissors::maskChoice:blockNo is invalid");
+            require((block.number).add(MASK_BLOCK_SLACK) >= blockNo && blockNo >= (block.number).sub(MASK_BLOCK_SLACK),"RockPaperScissors::maskChoice:blockNo is invalid");
             require((block.timestamp).sub(MASK_TIMESTAMP_SLACK) <= maskTimestamp, "RockPaperScissors::maskChoice:maskTimestamp below minimum, use latest block timestamp");
             require((block.timestamp).add(MASK_TIMESTAMP_SLACK) >= maskTimestamp, "RockPaperScissors::maskChoice:maskTimestamp above maximum, use latest block timestamp");
         }else{            
@@ -86,6 +86,7 @@ contract RockPaperScissors is Ownable {
 
         uint _playDeadline = block.timestamp.add(playCutoffInterval);
         Game storage game = games[latestGameId += 1];//SSTORE, SLOAD
+        game.creator = msg.sender; //SSTORE
         game.stake = toStake; //SSTORE        
         game.creatorMaskedChoice = maskedChoice; //SSTORE
         game.opponent = opponent; //SSTORE        
@@ -128,26 +129,27 @@ contract RockPaperScissors is Ownable {
         finish(gameId, resolve(game.creatorChoice, game.opponentChoice), game.creator, game.opponent, game.stake);// 5 * SLOAD
         delete games[gameId]; 
     }
-
+    
     function finish(uint gameId, Outcome outcome, address creator, address opponent, uint pay) internal  {
-        bool isDraw = outcome == Outcome.DRAW;  
+        bool isDraw = outcome == Outcome.DRAW;
+        bool isNone = outcome == Outcome.NONE;
 
-        pay = isDraw ? pay : pay.add(pay);        
-   
-        if((isDraw || outcome == Outcome.WIN) && pay != 0){
+        pay = (isDraw || isNone) ? pay : pay.add(pay);   
+        
+        if((isDraw || isNone || outcome == Outcome.WIN) && pay != 0){
             uint creatorBalance = winnings[creator]; //SLOAD
-            uint newCreatorBalance = creatorBalance.add(pay);
+            uint newCreatorBalance = pay.add(creatorBalance);
             winnings[creator] = newCreatorBalance; //SSTORE                
             emit LogWinningsBalanceChanged(creator, creatorBalance, newCreatorBalance);
         }
         if((isDraw || outcome == Outcome.LOSE) && pay != 0){
             uint opponentBalance = winnings[opponent]; //SLOAD
-            uint newOpponentBalance =opponentBalance.add(pay);
+            uint newOpponentBalance = pay.add(opponentBalance);
             winnings[opponent] = newOpponentBalance; //SSTORE
             emit LogWinningsBalanceChanged(opponent, opponentBalance, newOpponentBalance);
         }        
 
-        emit LogGameFinished(gameId, outcome, pay);
+        emit LogGameFinished(gameId, outcome, pay, msg.sender);
     }   
 
     function resolve(Choice creatorChoice, Choice opponentChoice) public pure returns(Outcome outcome){
@@ -161,7 +163,7 @@ contract RockPaperScissors is Ownable {
         {
             return opponentChoice != Choice.NONE ? 
                 Outcome.LOSE
-               :Outcome.WIN;
+               :Outcome.NONE;
         }
     }
 

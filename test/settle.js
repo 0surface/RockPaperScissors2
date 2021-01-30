@@ -110,6 +110,7 @@ contract("RockPaperScissors", (accounts) => {
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "gameId", gameId, "LogGameFinished gameId incorrect");
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "outcome", OUTCOME.LOSE, "LogGameFinished outcome incorrect");
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "stake", MIN_STAKE * 2, "LogGameFinished stake incorrect");
+      eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "settler", creator, "LogGameFinished settler incorrect");
     });
 
     it("should settle creator as loser for an unrevealed game", async () => {
@@ -122,14 +123,14 @@ contract("RockPaperScissors", (accounts) => {
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "outcome", OUTCOME.LOSE, "LogGameFinished outcome incorrect");
     });
 
-    it("should settle creator as winner for an unplayed game", async () => {
+    it("should settle game as None for an unplayed game", async () => {
       //Arrange
       await timeHelper.advanceTimeAndBlock(MIN_CUTOFF_INTERVAL * 2);
       //Act
       const txReceipt = await rockPaperScissors.contract.methods.settle(gameId).send({ from: creator, gas });
       //Assert
       assert.isDefined(txReceipt, "settle transaction is not mined");
-      eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "outcome", OUTCOME.WIN, "LogGameFinished outcome incorrect");
+      eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "outcome", OUTCOME.NONE, "LogGameFinished outcome incorrect");
     });
 
     after(async () => {

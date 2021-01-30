@@ -59,38 +59,26 @@ contract("RockPaperScissors", (accounts) => {
       await timeHelper.advanceTimeAndBlock(timestampSkipSeconds);
     });
 
-    function revertSituations() {
-      return [
-        {
-          gameId: gameId,
-          choice: CHOICE.NONE,
-          msgsender: opponent,
-          msgvalue: MIN_STAKE,
-          error: "did not fail for invalid Choice- CHOICE.NONE",
-        },
-        {
-          gameId: gameId,
-          choice: CHOICE.SCISSORS,
-          msgsender: somebody,
-          msgvalue: MIN_STAKE,
-          error: "did not for incorrect opponent address",
-        },
-        {
-          gameId: gameId,
-          choice: CHOICE.SCISSORS,
-          msgsender: opponent,
-          msgvalue: MIN_STAKE > 0 ? MIN_STAKE - 1 : 0,
-          error: "did not fail with insuffcient balance to stake",
-        },
-      ];
-    }
+    it("should revert given CHOICE.NONE as choice", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods.play(gameId, CHOICE.NONE).send({ from: opponent, value: MIN_STAKE, gas: gas })
+      );
+    });
 
-    revertSituations().forEach(async (d) => {
-      it(d.error, async () => {
+    it("should revert given incorrect opponent address", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods.play(gameId, CHOICE.SCISSORS).send({ from: somebody, value: MIN_STAKE, gas: gas })
+      );
+    });
+
+    it("should revert sent with insuffcient balance to stake", async () => {
+      if (MIN_STAKE > 0) {
         await truffleAssert.reverts(
-          rockPaperScissors.contract.methods.play(gameId, d.choice).send({ from: d.msgsender, value: d.msgvalue, gas: gas })
+          rockPaperScissors.contract.methods
+            .play(gameId, CHOICE.SCISSORS)
+            .send({ from: somebody, value: MIN_STAKE - 1, gas: gas })
         );
-      });
+      }
     });
 
     it("should play and set choice to storage", async () => {

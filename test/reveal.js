@@ -199,6 +199,7 @@ contract("RockPaperScissors", (accounts) => {
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "gameId", gameId, "LogGameFinished gameId incorrect");
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "outcome", OUTCOME.WIN, "LogGameFinished player incorrect");
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "stake", MIN_STAKE * 2, "LogGameFinished stake incorrect");
+      eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "settler", creator, "LogGameFinished settler incorrect");
     });
 
     after(async () => {
