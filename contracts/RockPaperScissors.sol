@@ -112,11 +112,11 @@ contract RockPaperScissors is Ownable {
         LogGamePlayed(gameId, msg.sender, choice);
     }
     
-    function reveal(bytes32  gameId, Choice choice, bytes32 mask, uint maskTimestamp, uint maskBlockNo) public {        
+    function reveal(bytes32 gameId, Choice choice, bytes32 mask, uint maskTimestamp, uint maskBlockNo) public {        
         Game storage game = games[gameId];        
-        require(game.opponentChoice != Choice.NONE || block.timestamp > game.playDeadline, "RockPaperScissors::reveal:opponent has not played or playDeadline not expired");
-        require(block.timestamp <= game.revealDeadline,"RockPaperScissors::reveal:reveal deadline has expired");
-        require(maskChoice(choice, mask, msg.sender, maskTimestamp, false, maskBlockNo) == game.creatorMaskedChoice, "RockPaperScissors::reveal:masked choice does not match");        
+        require(game.opponentChoice != Choice.NONE || block.timestamp > game.playDeadline, "RockPaperScissors::reveal:opponent has not played or playDeadline not expired"); //SLOAD, SLOAD
+        require(block.timestamp <= game.revealDeadline,"RockPaperScissors::reveal:reveal deadline has expired");//SLOAD
+        require(maskChoice(choice, mask, msg.sender, maskTimestamp, false, maskBlockNo) == gameId, "RockPaperScissors::reveal:masked choice does not match");        
   
         finish(gameId, resolve(choice, game.opponentChoice), game.creator, game.opponent, game.stake);
         delete games[gameId];
@@ -133,22 +133,22 @@ contract RockPaperScissors is Ownable {
         bool isDraw = outcome == Outcome.DRAW;
         bool isNone = outcome == Outcome.NONE;
 
-        pay = (isDraw || isNone) ? pay : pay.add(pay);   
+        uint owed = (isDraw || isNone) ? pay : pay.add(pay);   
         
         if((isDraw || isNone || outcome == Outcome.WIN) && pay != 0){
             uint creatorBalance = winnings[creator]; //SLOAD
-            uint newCreatorBalance = pay.add(creatorBalance);
+            uint newCreatorBalance = owed.add(creatorBalance);
             winnings[creator] = newCreatorBalance; //SSTORE                
             emit LogWinningsBalanceChanged(creator, creatorBalance, newCreatorBalance);
         }
         if((isDraw || outcome == Outcome.LOSE) && pay != 0){
             uint opponentBalance = winnings[opponent]; //SLOAD
-            uint newOpponentBalance = pay.add(opponentBalance);
+            uint newOpponentBalance = owed.add(opponentBalance);
             winnings[opponent] = newOpponentBalance; //SSTORE
             emit LogWinningsBalanceChanged(opponent, opponentBalance, newOpponentBalance);
         }        
 
-        emit LogGameFinished(gameId, outcome, pay, msg.sender);
+        emit LogGameFinished(gameId, outcome, owed, msg.sender);
     }   
 
     function resolve(Choice creatorChoice, Choice opponentChoice) public pure returns(Outcome outcome){

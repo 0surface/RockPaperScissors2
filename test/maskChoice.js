@@ -6,7 +6,7 @@ const { assert } = chai;
 
 contract("RockPaperScissors", (accounts) => {
   let snapShotId;
-  before("sdfs", async () => {
+  before("", async () => {
     it("TestRPC  must have adequate number of addresses", async () => {
       assert.isAtLeast(accounts.length, 2, "Test has enough addresses");
     });
