@@ -346,6 +346,15 @@ const App = {
     await gameState.gameListRefresh($("#addressSelector option:selected").attr("value"), _now);
     await this.showAccountBalance();
     await this.showWinnings();
+    const allGames = await gameState.gamesCount();
+    console.log("allGames", allGames);
+    $("#dappAllGames").html(allGames[0]);
+    $("#dappActiveGames").html(allGames[1]);
+
+    const accountGames = await gameState.accountGamesCount(this.activeAccount.address);
+    $("#activeAccountAllGames").html(accountGames[0]);
+    $("#activeAccountActiveGames").html(accountGames[1]);
+    console.log("accountGames", accountGames);
     //await gameData.deleteAllGames();
   },
 

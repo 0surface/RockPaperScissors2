@@ -17,7 +17,7 @@ gameListRefresh = async function (activeAddress, blockTimeStamp) {
 
     if (document.getElementById("gamesTableData").innerHTML === "") {
       $("#gamesTableContainer").hide();
-      $("#noGamesBanner").show().html(`<h4>You have no games</h4>`);
+      $("#noGamesBanner").show().html(`<h6>You have no games</h6>`);
     }
   } catch (ex) {
     console.error("fetchData error: ", ex);
@@ -108,6 +108,38 @@ getChoiceIcon = (choice) => {
   }
 };
 
+gamesCount = async function () {
+  try {
+    const docs = await gameData.fetchData();
+    const games = docs.rows.filter((x) => x.status !== gameUtil.gameStatusEnum.finished);
+    console.log("ALL games|", games);
+
+    // const games = (await gameData.fetchData()).rows;
+
+    const allGames = games.length;
+    const activeGames = games.filter((x) => x.doc.status !== gameUtil.gameStatusEnum.finished).length;
+    return [allGames, activeGames];
+    // return [1, 2];
+  } catch (ex) {
+    console.error("gamesCount error: ", ex);
+  }
+};
+
+accountGamesCount = async function (_account) {
+  try {
+    const docs = await gameData.fetchData();
+    const games = docs.rows.filter((x) => x.doc.playerOne === _account || x.doc.playerTwo === _account);
+    console.log("games|", games);
+    const allGames = games.length;
+    const activeGames = games.filter((x) => x.doc.status !== gameUtil.gameStatusEnum.finished).length;
+    return [allGames, activeGames];
+  } catch (ex) {
+    console.error("accountGamesCount error: ", ex);
+  }
+};
+
 module.exports = {
   gameListRefresh,
+  gamesCount,
+  accountGamesCount,
 };
