@@ -22,13 +22,12 @@ contract("RockPaperScissors", (accounts) => {
   let MAX_CUTOFF_INTERVAL;
   let MASK_TIMESTAMP_SLACK;
   let MASK_BLOCK_SLACK;
-  let cutOffInterval;
   let maskTimestamp;
+  let maskBlockNo;
   let gameId;
   const deployer = accounts[0];
   const creator = accounts[1];
   const opponent = accounts[2];
-  const somebody = accounts[3];
   const gas = 4000000;
   const CHOICE = {
     NONE: 0,
@@ -43,8 +42,9 @@ contract("RockPaperScissors", (accounts) => {
     async function maskChoice(_choice) {
       const block = await web3.eth.getBlock("latest");
       maskTimestamp = block.timestamp;
+      maskBlockNo = block.number;
       return await rockPaperScissors.contract.methods
-        .maskChoice(_choice, mask, creator, maskTimestamp, true, block.number)
+        .maskChoice(_choice, mask, creator, maskTimestamp, true, maskBlockNo)
         .call({ from: creator });
     }
 
@@ -68,7 +68,7 @@ contract("RockPaperScissors", (accounts) => {
 
     async function reveal(_choice) {
       const txReceipt = await rockPaperScissors.contract.methods
-        .reveal(gameId, _choice, mask, maskTimestamp)
+        .reveal(gameId, _choice, mask, maskTimestamp, maskBlockNo)
         .send({ from: creator, gas });
       assert.isDefined(txReceipt, "reveal Tx has not been mined");
     }

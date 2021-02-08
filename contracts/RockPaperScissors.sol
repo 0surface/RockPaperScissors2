@@ -29,10 +29,10 @@ contract RockPaperScissors is Ownable {
     uint constant public MASK_TIMESTAMP_SLACK = 10;
     uint constant public MASK_BLOCK_SLACK = 1;
     uint constant public MIN_STAKE = 1000000000000000; //10e15 wei or 0.001 ETH
-    uint constant public MIN_CUTOFF_INTERVAL = 1 hours;
+    uint constant public MIN_CUTOFF_INTERVAL = 1 minutes;
     uint constant public MAX_CUTOFF_INTERVAL = 10 days;
 
-    event LogGameCreated(bytes32 indexed gameId, address indexed opponent, uint playDeadline, uint staked);
+    event LogGameCreated(bytes32 indexed gameId, address indexed opponent, uint indexed playDeadline, uint staked);
     event LogGamePlayed(bytes32 indexed gameId, address indexed player, Choice choice);    
     event LogWinningsBalanceChanged(address indexed player, uint old, uint latest);
     event LogGameFinished(bytes32 indexed gameId, Outcome indexed outcome, uint stake, address settler);
@@ -68,13 +68,13 @@ contract RockPaperScissors is Ownable {
     } 
 
     function create(address opponent, bytes32 maskedChoice, uint toStake, uint playCutoffInterval) payable public  {
-        require(msg.sender != opponent);
-        require(opponent != address(0));
-        require(maskedChoice != NULL_BYTES);
-        require(toStake >= MIN_STAKE);
-        require(playCutoffInterval >= MIN_CUTOFF_INTERVAL);
-        require(playCutoffInterval <= MAX_CUTOFF_INTERVAL);
-        require(games[maskedChoice].playDeadline == 0);
+        require(msg.sender != opponent,"RockPaperScissors::create:game creator and opponenet can not identical");
+        require(opponent != address(0),"RockPaperScissors::create:opponent address can not be empty");
+        require(maskedChoice != NULL_BYTES,"RockPaperScissors::create:masked choice can not be empty");
+        require(toStake >= MIN_STAKE,"RockPaperScissors::create:insufficient stake");
+        require(playCutoffInterval >= MIN_CUTOFF_INTERVAL,"RockPaperScissors::create:cutoff interval below minimum");
+        require(playCutoffInterval <= MAX_CUTOFF_INTERVAL,"RockPaperScissors::create:cutoff interval above maximum");
+        require(games[maskedChoice].playDeadline == 0, "RockPaperScissors::create:game already exists");
 
         uint balance = winnings[msg.sender]; //SLOAD
         uint newBalance = balance.add(msg.value).sub(toStake, "RockPaperScissors::create:Insuffcient balance to stake"); //SLOAD
@@ -112,11 +112,11 @@ contract RockPaperScissors is Ownable {
         LogGamePlayed(gameId, msg.sender, choice);
     }
     
-    function reveal(bytes32  gameId, Choice choice, bytes32 mask, uint maskTimestamp) public {        
+    function reveal(bytes32  gameId, Choice choice, bytes32 mask, uint maskTimestamp, uint maskBlockNo) public {        
         Game storage game = games[gameId];        
         require(game.opponentChoice != Choice.NONE || block.timestamp > game.playDeadline, "RockPaperScissors::reveal:opponent has not played or playDeadline not expired");
-        require(block.timestamp <= game.revealDeadline);
-        require(maskChoice(choice, mask, msg.sender, maskTimestamp, false, block.number) == game.creatorMaskedChoice, "RockPaperScissors::reveal:masked choice does not match");        
+        require(block.timestamp <= game.revealDeadline,"RockPaperScissors::reveal:reveal deadline has expired");
+        require(maskChoice(choice, mask, msg.sender, maskTimestamp, false, maskBlockNo) == game.creatorMaskedChoice, "RockPaperScissors::reveal:masked choice does not match");        
   
         finish(gameId, resolve(choice, game.opponentChoice), game.creator, game.opponent, game.stake);
         delete games[gameId];

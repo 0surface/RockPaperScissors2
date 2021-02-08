@@ -18,6 +18,7 @@ contract("RockPaperScissors", (accounts) => {
   let MIN_STAKE;
   let MIN_CUTOFF_INTERVAL;
   let maskTimestamp;
+  let maskBlockNo;
   let maskedChoice;
   let playDeadline;
   let revealDeadline;
@@ -49,8 +50,9 @@ contract("RockPaperScissors", (accounts) => {
       /*create masked choice*/
       const block = await web3.eth.getBlock("latest");
       maskTimestamp = block.timestamp;
+      maskBlockNo = block.number;
       maskedChoice = await rockPaperScissors.contract.methods
-        .maskChoice(creatorChoice, mask, creator, maskTimestamp, true, block.number)
+        .maskChoice(creatorChoice, mask, creator, maskTimestamp, true, maskBlockNo)
         .call({ from: creator });
       gameId = maskedChoice;
 
@@ -86,7 +88,7 @@ contract("RockPaperScissors", (accounts) => {
       //Assert
       await truffleAssert.reverts(
         rockPaperScissors.contract.methods
-          .reveal(NULL_BYTES, creatorChoice, NULL_BYTES, maskTimestamp)
+          .reveal(NULL_BYTES, creatorChoice, NULL_BYTES, maskTimestamp, maskBlockNo)
           .send({ from: creator, gas })
       );
     });
@@ -98,7 +100,7 @@ contract("RockPaperScissors", (accounts) => {
       //Assert
       await truffleAssert.reverts(
         rockPaperScissors.contract.methods
-          .reveal(web3.utils.fromAscii("random"), creatorChoice, NULL_BYTES, maskTimestamp)
+          .reveal(web3.utils.fromAscii("random"), creatorChoice, NULL_BYTES, maskTimestamp, maskBlockNo)
           .send({ from: creator, gas })
       );
     });
@@ -109,7 +111,9 @@ contract("RockPaperScissors", (accounts) => {
 
       //Assert
       await truffleAssert.reverts(
-        rockPaperScissors.contract.methods.reveal(gameId, creatorChoice, NULL_BYTES, maskTimestamp).send({ from: creator, gas })
+        rockPaperScissors.contract.methods
+          .reveal(gameId, creatorChoice, NULL_BYTES, maskTimestamp, maskBlockNo)
+          .send({ from: creator, gas })
       );
     });
 
@@ -120,7 +124,9 @@ contract("RockPaperScissors", (accounts) => {
 
       //Assert
       await truffleAssert.reverts(
-        rockPaperScissors.contract.methods.reveal(gameId, creatorChoice, mask, maskTimestamp).send({ from: creator, gas })
+        rockPaperScissors.contract.methods
+          .reveal(gameId, creatorChoice, mask, maskTimestamp, maskBlockNo)
+          .send({ from: creator, gas })
       );
     });
 
@@ -134,7 +140,9 @@ contract("RockPaperScissors", (accounts) => {
 
       //Assert
       await truffleAssert.reverts(
-        rockPaperScissors.contract.methods.reveal(gameId, creatorChoice, mask, maskTimestamp).send({ from: creator, gas })
+        rockPaperScissors.contract.methods
+          .reveal(gameId, creatorChoice, mask, maskTimestamp, maskBlockNo)
+          .send({ from: creator, gas })
       );
     });
 
@@ -145,7 +153,7 @@ contract("RockPaperScissors", (accounts) => {
       //Assert
       await truffleAssert.reverts(
         rockPaperScissors.contract.methods
-          .reveal(gameId, (creatorChoice + 1) % 3, mask, maskTimestamp)
+          .reveal(gameId, (creatorChoice + 1) % 3, mask, maskTimestamp, maskBlockNo)
           .send({ from: creator, gas })
       );
     });
@@ -156,7 +164,9 @@ contract("RockPaperScissors", (accounts) => {
 
       //Assert
       await truffleAssert.reverts(
-        rockPaperScissors.contract.methods.reveal(gameId, creatorChoice, NULL_BYTES, maskTimestamp).send({ from: creator, gas })
+        rockPaperScissors.contract.methods
+          .reveal(gameId, creatorChoice, NULL_BYTES, maskTimestamp, maskBlockNo)
+          .send({ from: creator, gas })
       );
     });
 
@@ -166,7 +176,7 @@ contract("RockPaperScissors", (accounts) => {
 
       //Assert
       await truffleAssert.reverts(
-        rockPaperScissors.contract.methods.reveal(gameId, creatorChoice, mask, 0).send({ from: creator, gas })
+        rockPaperScissors.contract.methods.reveal(gameId, creatorChoice, mask, 0, maskBlockNo).send({ from: creator, gas })
       );
     });
 
@@ -176,7 +186,7 @@ contract("RockPaperScissors", (accounts) => {
 
       //Act
       const txReceipt = await rockPaperScissors.contract.methods
-        .reveal(gameId, creatorChoice, mask, maskTimestamp)
+        .reveal(gameId, creatorChoice, mask, maskTimestamp, maskBlockNo)
         .send({ from: creator, gas });
 
       //Assert
@@ -193,7 +203,7 @@ contract("RockPaperScissors", (accounts) => {
 
       //Act
       const txReceipt = await rockPaperScissors.contract.methods
-        .reveal(gameId, creatorChoice, mask, maskTimestamp)
+        .reveal(gameId, creatorChoice, mask, maskTimestamp, maskBlockNo)
         .send({ from: creator, gas });
 
       //Assert

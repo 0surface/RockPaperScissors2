@@ -17,8 +17,6 @@ contract("RockPaperScissors", (accounts) => {
   let rockPaperScissors;
   let MIN_STAKE;
   let MIN_CUTOFF_INTERVAL;
-  let maskTimestamp;
-  let maskedChoice;
   let gameId;
   const timestampSkipSeconds = 15;
   const deployer = accounts[0];
@@ -40,9 +38,8 @@ contract("RockPaperScissors", (accounts) => {
     async function maskChoice() {
       /*create masked choice*/
       const block = await web3.eth.getBlock("latest");
-      maskTimestamp = block.timestamp;
       return await rockPaperScissors.contract.methods
-        .maskChoice(creatorChoice, mask, creator, maskTimestamp, true, block.number)
+        .maskChoice(creatorChoice, mask, creator, block.timestamp, true, block.number)
         .call({ from: creator });
     }
 

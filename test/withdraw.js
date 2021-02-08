@@ -20,6 +20,7 @@ contract("RockPaperScissors", (accounts) => {
   let rockPaperScissors;
   let MIN_CUTOFF_INTERVAL;
   let maskTimestamp;
+  let maskBlockNo;
   let gameId;
   const deployer = accounts[0];
   const creator = accounts[1];
@@ -39,8 +40,9 @@ contract("RockPaperScissors", (accounts) => {
     async function maskChoice(_choice) {
       const block = await web3.eth.getBlock("latest");
       maskTimestamp = block.timestamp;
+      maskBlockNo = block.number;
       return await rockPaperScissors.contract.methods
-        .maskChoice(_choice, mask, creator, maskTimestamp, true, block.number)
+        .maskChoice(_choice, mask, creator, maskTimestamp, true, maskBlockNo)
         .call({ from: creator });
     }
 
@@ -65,7 +67,7 @@ contract("RockPaperScissors", (accounts) => {
 
     async function reveal(_choice) {
       const txReceipt = await rockPaperScissors.contract.methods
-        .reveal(gameId, _choice, mask, maskTimestamp)
+        .reveal(gameId, _choice, mask, maskTimestamp, maskBlockNo)
         .send({ from: creator, gas });
       assert.isDefined(txReceipt, "reveal Tx has not been mined");
     }
@@ -77,21 +79,19 @@ contract("RockPaperScissors", (accounts) => {
       return Number(bn_gasPrice.mul(bn_gasAmount));
     }
 
-    it("reverts if winnings balance is zero", async () => {
-      rockPaperScissors = await RockPaperScissors.new({ from: deployer });
-      const balance = Number(await rockPaperScissors.winnings.call(somebody));
-      assert.isTrue(balance === 0, "balance is not zero");
-
-      await truffleAssert.reverts(
-        rockPaperScissors.contract.methods.withdraw().send({ from: somebody }),
-        "RockPaperScissors::withdraw:No funds to withdraw"
-      );
-    });
-
     beforeEach("deploy a fresh contract, create game, advance block & timestamp", async () => {
       rockPaperScissors = await RockPaperScissors.new({ from: deployer });
       MIN_STAKE = (await rockPaperScissors.MIN_STAKE.call()).toNumber();
       MIN_CUTOFF_INTERVAL = (await rockPaperScissors.MIN_CUTOFF_INTERVAL.call()).toNumber();
+    });
+
+    it("reverts if winnings balance is zero", async () => {
+      //Arrange
+      const winningBalance = Number(await rockPaperScissors.winnings.call(somebody));
+      assert.isTrue(winningBalance === 0, "balance is not zero");
+
+      //Act, Assert
+      await truffleAssert.reverts(rockPaperScissors.contract.methods.withdraw().send({ from: creator }));
     });
 
     it("should emit LogWithdrawal event", async () => {

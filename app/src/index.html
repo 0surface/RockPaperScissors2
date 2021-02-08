@@ -1,29 +1,428 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Rock Paper Scissors</title>
+    <title>A Classic Game</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    	<!-- Bootstrap Files -->
+
+	<!-- Bootstrap Files -->
 	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 
 	<!-- Page CSS -->
   <!-- <link rel="stylesheet" href="css/page.css" type="text/css"> -->
   <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css" integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p" crossorigin="anonymous"/>
-  </head>
-  <style>
-    input {
-      display: block;
-      margin-bottom: 12px;
-    }
-  </style>
-  <body>
-    <h2>Rock Paper Scissors</h2>
+  </head> 
+  <body style="background-color:rgb(102, 96, 96)">
+    <div style="margin-left: 10px;"">
+      <!-- contract balance  and  status -->
+      <section>
+        
+        <div class="row bg-light statusBar">
+          <div class="col-sm-12">
+            <h3>ROCK PAPER SCISSORS</h1>           
+          </div>                   
+        </div>
+      </section>   
+      <br/>
+      
+      <!-- Contract Items -->
+      <section>
+        <div class="container" style="background-color:whitesmoke ">          
+          <div class="row">
+            <div class="container col-md-2">
+              <span style="font-weight: bolder; font-size: xx-large;">DAPP</span>
+            </div>
+            <div class="container col-md-4" style="border:solid 1px;">              
+              <div class="row">
+                <div class="col-md-3 align-self-center">  
+                  <span><small>Balance</small></span>
+                </div>
+                <div class="col-md-9">  
+                  <span id="contractBalance" style="font-size:xx-large; font-weight: bolder;"></span>            
+                </div>
+              </div>         
+            </div>
+            <div class="container col-md-3" style="border:solid 1px;">              
+              <div class="row">
+                <div class="col-md-6 align-self-center">  
+                  <span><small>Active Games</small></span>
+                </div>
+                <div class="col-md-6">  
+                  <span id="dappActiveGames" style="font-size:xx-large; font-weight: bolder;">15</span>            
+                </div>
+              </div>         
+            </div>
+            <div class="container col-md-3" style="border:solid 1px;">              
+              <div class="row">
+                <div class="col-md-6 align-self-center">  
+                  <span><small>All Games</small></span>
+                </div>
+                <div class="col-md-6">  
+                  <span  id="dappAllGames" style="font-size:xx-large; font-weight: bolder;">105</span>            
+                </div>
+              </div>         
+            </div>            
+          </div>
+        </div>
+      </section>
+      
+      <br/>
+      <!-- Active Address Items -->
+      <section>
+        <div class="container" style="background-color:azure ">          
+          <div class="row">
+            <div class="container col-md-2">
+              <span id="activeWallet" style="font-weight: bolder; font-size: xx-large;"></span>
+            </div>
+            <div class="container col-md-4" style="border:solid 1px;">              
+              <div class="row">
+                <div class="col-md-3 align-self-center">  
+                  <span><small>Account </small></span>
+                </div>
+                <div class="col-md-9">  
+                  <span id="activeAccountBalance" style="font-size:xx-large; font-weight: bolder;"></span>                              
+                </div>                
+              </div>         
+            </div>
+            <div class="container col-md-4" style="border:solid 1px;">              
+              <div class="row justify-content-center align-self-center">
+                <div class="col-md-3 align-self-center">  
+                  <span><small>Winnings</small></span>
+                </div>
+                <div class="col-md-9">  
+                  <span id="winningsAmount"style="font-size:xx-large; font-weight: bolder;">15</span>            
+                </div>
+              </div>         
+            </div>
+            <div class="container col-md-2">              
+              <div class="row">                
+                <button class="btn btn-info btn-block" data-toggle="modal" data-target="#payoutModal">
+                  <i class="fas fa-coins"></i>&nbsp Withdraw
+                </button>
+              </div>         
+            </div>
+          </div>
+        </div>
+      </section>
+      <br/>
+
+      <!-- active address selection -->
+      <section>        
+        <div class="container">
+          <div class="row">
+            <select id="addressSelector" class="dropdown" name="Addresses" 
+              style="font-size:large;font-weight:700;margin-left:10px" 
+              onchange="App.setActiveWallet(this.option)">
+            </select>
+            <button class="btn btn-small btn-secondary" onclick="App.copyTextToClipBoard(`activeWalletAddress`)" 
+              data-toggle="tooltip" data-placement="right" title="Copy">
+              <i class="fas fa-copy fa-xs"></i></button>
+              <div><span type="text" id="activeWalletAddress" style="font-size:x-small;font-weight:200;margin-left:10px"></span></div>
+          </div>
+        </div>
+        <hr/>
+      </section>
+
+      <!-- Tx status, progress bar -->
+      <section class="row bg-light" style="align-content:center;" id="statusSection">
+        <div class="col-sm-8 col-md-8">
+          <div class="progress" style="height: 20px;">
+            <div class="progress-bar" id="txStatusProgressbar" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          </div>
+        <div class="col-sm-8 mt-2 mb-2" style="align-items: center;">
+          <div id="txStatus" class="alert alert-success" role="alert">            
+          </div>
+        </div>
+      </section>  
+      <br/>
+
+      <!-- game list -->
+      <br/>
+      <section id="games" class="col-md-12" style="width: 100%;margin-left: 10px;">
+        <div style="display:inline-block">
+          <button class="btn btn-lg btn-primary" id="btnGamesRefresh" onclick="App.refreshGames()"><i class="fas fa-sync"></i> &nbsp Refresh Games</a></button>
+          <button class="btn btn-lg btn-success" data-toggle="modal" data-target="#createModal"><i class="fas fa-magic"></i> &nbsp Create </button>                    
+        </div>   
+        <br/>
+        <hr/>
+        <div id="noGamesBanner" class="col-md-6 alert alert-info" role="alert">          
+        </div>
+        <div id="gamesTableContainer" class="col-md-12" >
+          <table id ="gamesTable" class="table table-striped table-sm gametable">
+            <thead>
+              <tr>        
+                <th scope="col">Player</th>
+                <th scope="col">Staked</th>
+                <th scope="col">Play Expires</th>
+                <th scope="col">Reveal Expires</th>
+                <th scope="col"></th>  
+              </tr>
+            </thead>
+            <tbody id="gamesTableData" class="small">            
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <br/>
+      <hr/>
+      <br/>
+    </div>
+
+      <!----Modals        Modals        Modals        Modals      Modals  -->
+
+      <!-- create Modal -->
+      <div class="modal fade" id="createModal" tabindex="-1" role="dialog" aria-labelledby="createModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="createModalLabel">Create Game</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <input type="text" class="form-control" id="create_counterparty" aria-placeholder="Opponent" placeholder="Opponent address" required>
+                <small class="form-text text-danger" id ="create_counterparty_Error"></small>
+              </div>
     
+              <div><small class="form-text text-info" id ="create_min_stake_message">Minimum Stake</small></div>
+              <div class="form-group">
+                <input type="number" class="form-control" min="0" id="create_stake" aria-placeholder="Ether to stake" placeholder="Ether to stake">                
+                <small class="form-text text-danger" id ="create_stake_Error"></small>                    
+              </div>       
+              
+              <div class="form-group">
+                <input type="text" class="form-control" id="create_mask" minlength="15" aria-placeholder="Mask string" placeholder="Mask string">
+                <small class="form-text text-danger" id ="create_mask_Error"></small>
+              </div>  
+
+              <div class="btn-group mb-2 " role="group" aria-label="Choices" id="create_choices">
+                <button id="create_rock" type="button" class="btn btn-lg btn-secondary rpsChoice"  value="1" onclick="App.choiceSelected(id)">
+                  <i class="fas fa-3x fa-hand-rock"></i>
+                </button>
+                <button id="create_paper" type="button" class="btn btn-lg btn-secondary rpsChoice" value="2" onclick="App.choiceSelected(id)">
+                  <i class="fas fa-3x fa-hand-paper"></i>
+                </button>
+                <button id="create_scissors" type="button" class="btn btn-lg btn-secondary rpsChoice" value="3" onclick="App.choiceSelected(id)">
+                  <i class="fas fa-3x fa-hand-scissors"></i>
+                </button>            
+              </div> 
+              <small class="form-text text-danger" id ="create_chosen_Error"></small>  
+              <hidden id="create_chosen"></hidden>  
+              <br>      
+              <div><small class="form-text text-info" id ="create_gameLength_limits">Minimum Maximum Lifetime</small></div>
+              <div class="input-group" id="gameLengthGroup">                      
+                <div class="input-group-prepend">
+                  <span class="input-group-text"><i class="fas fa-hourglass-end"></i> &nbsp Expires In</span>
+                </div>                
+                <input type="number" aria-label="days" max="365" min="0" placeholder= "000" id="create_gameDays" value="0" class="form-control input-sm">
+                <span class="input-group-text">days</span>              
+                <input type="number" aria-label="hours" max="24" min="0" placeholder="00" id="create_gameHours" value="24" class="form-control input-sm">
+                <span class="input-group-text">hrs</span>
+                <input type="number" aria-label="minutes" max="60" min="0" placeholder="00" id="create_gameMinutes" value="0" class="form-control input-sm">
+                <span class="input-group-text">mins</span>
+                <small class="form-text text-danger" id ="create_gameLength_Error"></small>
+              </div>
+              <br>           
+              
+              <div>
+                <button type="button" class="btn btn-lg btn-block btn-success" data-dismiss="modal" disabled id="btnCreate" onclick="App.create()">
+                  <i class="fas fa-magic"></i> &nbsp Create</a> 
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>   
+
+        <!-- play Modal -->
+      <div class="modal fade" id="playModal" tabindex="-1" role="dialog" aria-labelledby="playModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="playModalLabel"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <section id="playGame">
+                  <hidden id="play_gameId"/> 
+                  <hidden id="play_deadline"/>              
+                  <div>
+                    <small class="form-text text-danger" id ="play_deadline_Error"></small>
+                  </div>               
+                  <div class="input-group form-group">                    
+                    <input type="text" class="form-control" min="0" id="play_gamestake" aria-placeholder="Game Stake" disabled placeholder="Game Stake" required>
+                    <div class="input-group-append">
+                      <span class="input-group-text" id="basic-addon2">ETH</span>
+                    </div>
+                    <small class="form-text text-danger" id ="play_gamestake_Error"></small>
+                  </div>
+                  <div class="input-group form-group">
+                    <small class="form-text text-info" id ="play_min_stake_message">Minimum Stake</small>
+                    <div class="input-group">
+                    <input type="number" class="form-control" min="0" id="play_stake" aria-placeholder="To Stake" placeholder="Amount to Stake" required>                    
+                    <div class="input-group-append">
+                      <button class="btn btn-sm btn-info" id="matchStake" onclick="App.matchStake(`play_gamestake`,`play_stake`)">match</button>                      
+                    </div>                   
+                  </div> 
+                    <small class="form-text text-danger" id ="play_stake_Error"></small>                    
+                  </div>
+                  <div class="btn-group mb-2 rpsChoice" role="group" aria-label="Choices" id="play_choices">
+                    <button id="play_rock" type="button" class="btn btn-lg btn-secondary rpsChoice"  value="1" onclick="App.playChoiceSelected(id)">
+                      <i class="fas fa-3x fa-hand-rock" ></i>
+                    </button>
+                    <button id="play_paper" type="button" class="btn btn-lg btn-secondary rpsChoice" value="2" onclick="App.playChoiceSelected(id)">
+                      <i class="fas fa-3x fa-hand-paper"></i>
+                    </button>
+                    <button id="play_scissors" type="button" class="btn btn-lg btn-secondary rpsChoice" value="3" onclick="App.playChoiceSelected(id)">
+                      <i class="fas fa-3x fa-hand-scissors"></i>
+                    </button>            
+                  </div> 
+                  <hidden id="play_chosen" required></hidden>             
+                  <small class="form-text text-danger" id ="play_chosen_Error"></small> 
+                  
+                  <button class="btn btn-lg btn-block btn-success" id="btnPlay" data-dismiss="modal" onclick="App.play()">
+                    <i class="fas fa-sign-in-alt"></i> &nbsp Play</a></button>   
+                </section>
+              </div>
+            </div>
+          </div>
+      </div>
+
+      <!-- reveal Modal -->
+      <div class="modal fade" id="revealModal" tabindex="-1" role="dialog" aria-labelledby="revealModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="revealModalLabel"></h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div id="revealGame" style="align-self:center;">
+                <hidden id="reveal_gameId"/> 
+                <hidden id="reveal_deadline"/>
+                <hidden id="reveal_revealer"/>
+                <hidden id="reveal_yourchoice"/>
+                <hidden id="reveal_theirchoice"/>
+                <div>
+                  <small class="form-text text-danger" id ="reveal_deadline_Error"></small>
+                </div>   
+                <table id ="gamesTable" class="table borderless">
+                  <thead>
+                    <tr>
+                      <th scope="col">Yours</th>
+                      <th scope="col">Theirs</th>
+                      <th scope="col">Outcome</th>                
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td id="reveal_yourchoice_html"></td>
+                      <td id="reveal_theirchoice_html"></td>
+                      <td id="reveal_outcome_html" ></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <button class="btn btn-block btn-lg btn-success" id="btnReveal" data-dismiss="modal" onclick="App.reveal()">                  
+                  <i class="fas fa-eye"></i> &nbsp Reveal</a></button> 
+              </div>
+              </div>                        
+          </div>
+        </div>
+      </div>
+
+      <!-- settle Modal -->
+      <div class="modal fade" id="settleModal" tabindex="-1" role="dialog" aria-labelledby="settleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="settleModalLabel"></h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <hidden id="settle_gameId" />
+              <button class="btn btn-lg btn-block btn-success" id="btnSettle" onclick="App.settle()"><i class="fas fa-gavel"></i> &nbsp Settle</a> 
+            </div>                
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      <!-- payout modal -->      
+      <div class="modal fade" id="payoutModal" tabindex="-1" role="dialog" aria-labelledby="payoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="payoutModalLabel">Winnings</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="col-md-12">                
+                <span id="payout_balance" class="alert alert-success" role="alert"></span>
+              </div>
+              <br/>
+              <div>
+                <button class="btn btn-lg btn-block btn-success" id="btnPayout" data-dismiss="modal" onclick="App.withdraw()"><i class="fas fa-coins"></i> &nbsp Withdraw</a>                 
+              </div>
+            </div>            
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Bootstrap Files -->
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <!-- Page JS -->
     <script src="index.js"></script>
+
+    <style>
+      .dropdown {
+        /* width: 300px !important; */
+        
+        height: 40px !important;
+      }
+      .rpsChoice {
+        border-style: solid 2px;
+        border-color: black;
+        width: 100px;
+        height: 100px;
+      }
+      .statusText {
+        margin-bottom: 10px;
+        margin-top: 10px;
+        padding: 10px 10px;
+        font-size: large;
+        align-self: center;
+      }
+      input[type="checkbox"] {
+        scale: 0.6;
+      }
+      label {
+        display: inline-block;
+      }      
+      select.form-control.fa option{ font-weight: 900; }
+      
+      .borderless td, .borderless th {
+        border: none;
+      }
+      .gametable td,tr {
+        font-weight:bold;
+        font-size: large;
+      }
+    </style>
   </body>
 </html>
