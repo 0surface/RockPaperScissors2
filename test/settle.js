@@ -17,8 +17,6 @@ contract("RockPaperScissors", (accounts) => {
   let rockPaperScissors;
   let MIN_STAKE;
   let MIN_CUTOFF_INTERVAL;
-  let maskTimestamp;
-  let maskedChoice;
   let gameId;
   const timestampSkipSeconds = 15;
   const deployer = accounts[0];
@@ -40,21 +38,19 @@ contract("RockPaperScissors", (accounts) => {
     async function maskChoice() {
       /*create masked choice*/
       const block = await web3.eth.getBlock("latest");
-      maskTimestamp = block.timestamp;
-      maskedChoice = await rockPaperScissors.contract.methods
-        .maskChoice(creatorChoice, mask, creator, maskTimestamp, true, block.number)
+      return await rockPaperScissors.contract.methods
+        .maskChoice(creatorChoice, mask, creator, block.timestamp, true, block.number)
         .call({ from: creator });
     }
 
-    async function createGame() {
+    async function createGame(_maskedChoice) {
       /*create game*/
       const txReceipt = await rockPaperScissors.contract.methods
-        .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+        .create(opponent, _maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
         .send({ from: creator, value: MIN_STAKE, gas: gas });
     }
 
     async function setGameVariables() {
-      gameId = (await rockPaperScissors.latestGameId.call()).toNumber();
       const game = await rockPaperScissors.games.call(gameId);
       assert.isDefined(game, "game has not been written to storage");
 
@@ -76,8 +72,8 @@ contract("RockPaperScissors", (accounts) => {
       rockPaperScissors = await RockPaperScissors.new({ from: deployer });
       MIN_STAKE = (await rockPaperScissors.MIN_STAKE.call()).toNumber();
       MIN_CUTOFF_INTERVAL = (await rockPaperScissors.MIN_CUTOFF_INTERVAL.call()).toNumber();
-      await maskChoice();
-      await createGame();
+      gameId = await maskChoice();
+      await createGame(gameId);
       await setGameVariables();
       await timeHelper.advanceTimeAndBlock(timestampSkipSeconds);
     });
@@ -88,8 +84,7 @@ contract("RockPaperScissors", (accounts) => {
       await timeHelper.advanceTimeAndBlock(1);
       //Act
       const block = await web3.eth.getBlock("latest");
-      const id = await rockPaperScissors.latestGameId.call();
-      const game = await rockPaperScissors.games.call(id);
+      const game = await rockPaperScissors.games.call(gameId);
       assert.isTrue(
         block.timestamp < Number(game.revealDeadline),
         "Arrange Eror: block timestamp is not less than revealDeadline"
@@ -102,14 +97,16 @@ contract("RockPaperScissors", (accounts) => {
       //Arrange
       await playGame(MIN_CUTOFF_INTERVAL);
       await timeHelper.advanceTimeAndBlock(MIN_CUTOFF_INTERVAL);
+
       //Act
-      const _gameId = await rockPaperScissors.latestGameId.call();
-      const txReceipt = await rockPaperScissors.contract.methods.settle(_gameId).send({ from: creator, gas });
+      const txReceipt = await rockPaperScissors.contract.methods.settle(gameId).send({ from: creator, gas });
+
       //Assert
       eventAssert.eventIsEmitted(txReceipt, "LogGameFinished");
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "gameId", gameId, "LogGameFinished gameId incorrect");
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "outcome", OUTCOME.LOSE, "LogGameFinished outcome incorrect");
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "stake", MIN_STAKE * 2, "LogGameFinished stake incorrect");
+      eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "settler", creator, "LogGameFinished settler incorrect");
     });
 
     it("should settle creator as loser for an unrevealed game", async () => {
@@ -122,14 +119,14 @@ contract("RockPaperScissors", (accounts) => {
       eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "outcome", OUTCOME.LOSE, "LogGameFinished outcome incorrect");
     });
 
-    it("should settle creator as winner for an unplayed game", async () => {
+    it("should settle game as None for an unplayed game", async () => {
       //Arrange
       await timeHelper.advanceTimeAndBlock(MIN_CUTOFF_INTERVAL * 2);
       //Act
       const txReceipt = await rockPaperScissors.contract.methods.settle(gameId).send({ from: creator, gas });
       //Assert
       assert.isDefined(txReceipt, "settle transaction is not mined");
-      eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "outcome", OUTCOME.WIN, "LogGameFinished outcome incorrect");
+      eventAssert.parameterIsValid(txReceipt, "LogGameFinished", "outcome", OUTCOME.NONE, "LogGameFinished outcome incorrect");
     });
 
     after(async () => {

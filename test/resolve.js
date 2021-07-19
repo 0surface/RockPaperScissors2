@@ -3,7 +3,7 @@ const timeHelper = require("../util/timeHelper");
 const chai = require("chai");
 const { assert } = chai;
 
-contract("RockPaperScissors::resolve", (accounts) => {
+contract("RockPaperScissors", (accounts) => {
   let snapShotId;
   before(async () => {
     it("TestRPC  must have adequate number of addresses", () => {
@@ -39,8 +39,8 @@ contract("RockPaperScissors::resolve", (accounts) => {
     { c1: CHOICE.NONE, c2: CHOICE.ROCK, r: OUTCOME.LOSE },
     { c1: CHOICE.NONE, c2: CHOICE.PAPER, r: OUTCOME.LOSE },
     { c1: CHOICE.NONE, c2: CHOICE.SCISSORS, r: OUTCOME.LOSE },
-    //should never happen
-    { c1: CHOICE.NONE, c2: CHOICE.NONE, r: OUTCOME.WIN },
+    //player1 did not reveal, player2 did not play
+    { c1: CHOICE.NONE, c2: CHOICE.NONE, r: OUTCOME.NONE },
   ];
 
   describe("resolve tests", () => {
@@ -48,10 +48,9 @@ contract("RockPaperScissors::resolve", (accounts) => {
       rockPaperScissors = await RockPaperScissors.new({ from: deployer });
     });
 
-    it("should resolve game outcome", async () => {
-      testData.forEach(async (d) => {
-        const result = await rockPaperScissors.contract.methods.resolve(d.c1, d.c2).call({ from: deployer });
-        assert.equal(d.r, Number(result));
+    testData.forEach(async (d) => {
+      it(`should resolve to [${d.r}] given [${d.c1}, ${d.c2}]`, async () => {
+        assert.strictEqual(d.r, Number(await rockPaperScissors.contract.methods.resolve(d.c1, d.c2).call({ from: deployer })));
       });
     });
 

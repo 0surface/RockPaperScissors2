@@ -6,8 +6,7 @@ import "./SafeMath.sol";
 
 contract RockPaperScissors is Ownable {
     using SafeMath for uint;
-
-    uint public latestGameId;
+    
     struct Game {
         uint stake; 
         uint playDeadline;
@@ -20,7 +19,7 @@ contract RockPaperScissors is Ownable {
         address opponent;
         Choice opponentChoice;               
     }
-    mapping(uint => Game) public games;
+    mapping(bytes32 => Game) public games;
     mapping(address => uint) public winnings;
 
     enum Choice {NONE, ROCK, PAPER, SCISSORS}
@@ -30,15 +29,14 @@ contract RockPaperScissors is Ownable {
     uint constant public MASK_TIMESTAMP_SLACK = 10;
     uint constant public MASK_BLOCK_SLACK = 1;
     uint constant public MIN_STAKE = 1000000000000000; //10e15 wei or 0.001 ETH
-    uint constant public MIN_CUTOFF_INTERVAL = 1 hours;
+    uint constant public MIN_CUTOFF_INTERVAL = 1 minutes;
     uint constant public MAX_CUTOFF_INTERVAL = 10 days;
 
-    event LogGameCreated(uint indexed gameId, address indexed opponent, uint indexed playDeadline, uint staked);
-    event LogGamePlayed(uint indexed gameId, address indexed player, Choice indexed choice);
-    event LogChoiceRevealed(uint indexed gameId, address indexed revealer, Choice choice); 
-    event LogWinningsBalanceChanged(address indexed player, uint indexed old, uint indexed latest);
-    event LogGameFinished(uint indexed gameId, Outcome indexed outcome, uint indexed stake);
-    event LogWithdrawal(address indexed withdrawer, uint indexed withdrawn);
+    event LogGameCreated(bytes32 indexed gameId, address indexed opponent, uint indexed playDeadline, uint staked);
+    event LogGamePlayed(bytes32 indexed gameId, address indexed player, Choice choice);    
+    event LogWinningsBalanceChanged(address indexed player, uint old, uint latest);
+    event LogGameFinished(bytes32 indexed gameId, Outcome indexed outcome, uint stake, address settler);
+    event LogWithdrawal(address indexed withdrawer, uint withdrawn);
 
     constructor() public {} 
 
@@ -55,28 +53,28 @@ contract RockPaperScissors is Ownable {
      public view 
      returns (bytes32 maskedChoice)
      {
-        require(choice != Choice.NONE, "RockPaperScissors::maskChoice:game move choice can not be NONE");
-        require(mask != NULL_BYTES, "RockPaperScissors::maskChoice:mask can not be empty");
-        require(masker != address(0), "RockPaperScissors::maskChoice:masker can not be null address");   
-
-        if(maskingOnly){
-            require((block.number) + MASK_BLOCK_SLACK >= blockNo && blockNo >= (block.number) - MASK_BLOCK_SLACK,"RockPaperScissors::maskChoice:blockNo is invalid");
+         if(maskingOnly){
+            require(choice != Choice.NONE, "RockPaperScissors::maskChoice:game move choice can not be NONE");
+            require(mask != NULL_BYTES, "RockPaperScissors::maskChoice:mask can not be empty");
+            require(masker != address(0), "RockPaperScissors::maskChoice:masker can not be null address");
+            require((block.number).add(MASK_BLOCK_SLACK) >= blockNo && blockNo >= (block.number).sub(MASK_BLOCK_SLACK),"RockPaperScissors::maskChoice:blockNo is invalid");
             require((block.timestamp).sub(MASK_TIMESTAMP_SLACK) <= maskTimestamp, "RockPaperScissors::maskChoice:maskTimestamp below minimum, use latest block timestamp");
             require((block.timestamp).add(MASK_TIMESTAMP_SLACK) >= maskTimestamp, "RockPaperScissors::maskChoice:maskTimestamp above maximum, use latest block timestamp");
         }else{            
-            require( block.timestamp >= (maskTimestamp).add(MIN_CUTOFF_INTERVAL), "RockPaperScissors::maskChoice:Invalid maskTimestamp for reveal");
+            require(block.timestamp >= (maskTimestamp).add(MIN_CUTOFF_INTERVAL), "RockPaperScissors::maskChoice:Invalid maskTimestamp for reveal");
         }
        
         return keccak256(abi.encodePacked(address(this), choice, mask, masker, maskTimestamp));
     } 
 
     function create(address opponent, bytes32 maskedChoice, uint toStake, uint playCutoffInterval) payable public  {
-        require(msg.sender != opponent);
-        require(opponent != address(0));
-        require(maskedChoice != NULL_BYTES);
-        require(toStake >= MIN_STAKE);
-        require(playCutoffInterval >= MIN_CUTOFF_INTERVAL);
-        require(playCutoffInterval <= MAX_CUTOFF_INTERVAL);
+        require(msg.sender != opponent,"RockPaperScissors::create:game creator and opponenet can not identical");
+        require(opponent != address(0),"RockPaperScissors::create:opponent address can not be empty");
+        require(maskedChoice != NULL_BYTES,"RockPaperScissors::create:masked choice can not be empty");
+        require(toStake >= MIN_STAKE,"RockPaperScissors::create:insufficient stake");
+        require(playCutoffInterval >= MIN_CUTOFF_INTERVAL,"RockPaperScissors::create:cutoff interval below minimum");
+        require(playCutoffInterval <= MAX_CUTOFF_INTERVAL,"RockPaperScissors::create:cutoff interval above maximum");
+        require(games[maskedChoice].playDeadline == 0, "RockPaperScissors::create:game already exists");
 
         uint balance = winnings[msg.sender]; //SLOAD
         uint newBalance = balance.add(msg.value).sub(toStake, "RockPaperScissors::create:Insuffcient balance to stake"); //SLOAD
@@ -86,17 +84,18 @@ contract RockPaperScissors is Ownable {
         }
 
         uint _playDeadline = block.timestamp.add(playCutoffInterval);
-        Game storage game = games[latestGameId += 1];//SSTORE, SLOAD
+        Game storage game = games[maskedChoice];//SSTORE, SLOAD
+        game.creator = msg.sender; //SSTORE
         game.stake = toStake; //SSTORE        
         game.creatorMaskedChoice = maskedChoice; //SSTORE
         game.opponent = opponent; //SSTORE        
         game.playDeadline = _playDeadline; //SSTORE
         game.revealDeadline = _playDeadline.add(playCutoffInterval); //SSTORE
 
-        emit LogGameCreated(latestGameId, opponent, _playDeadline, toStake);         
+        emit LogGameCreated(maskedChoice, opponent, _playDeadline, toStake);         
     }
 
-    function play(uint gameId, Choice choice) payable public  {
+    function play(bytes32  gameId, Choice choice) payable public  {
         require(Choice.NONE != choice);
         require(msg.sender == games[gameId].opponent); //SLOAD
         require(block.timestamp <= games[gameId].playDeadline); //SLOAD        
@@ -113,51 +112,57 @@ contract RockPaperScissors is Ownable {
         LogGamePlayed(gameId, msg.sender, choice);
     }
     
-    function reveal(uint gameId, Choice choice, bytes32 mask, uint maskTimestamp) public {        
+    function reveal(bytes32 gameId, Choice choice, bytes32 mask, uint maskTimestamp, uint maskBlockNo) public {        
         Game storage game = games[gameId];        
-        require(game.opponentChoice != Choice.NONE || block.timestamp > game.playDeadline, "RockPaperScissors::reveal:opponent has not played or playDeadline not expired");
-        require(block.timestamp <= game.revealDeadline);
-        require(maskChoice(choice, mask, msg.sender, maskTimestamp, false, block.number) == game.creatorMaskedChoice, "RockPaperScissors::reveal:masked choice does not match");        
+        require(game.opponentChoice != Choice.NONE || block.timestamp > game.playDeadline, "RockPaperScissors::reveal:opponent has not played or playDeadline not expired"); //SLOAD, SLOAD
+        require(block.timestamp <= game.revealDeadline,"RockPaperScissors::reveal:reveal deadline has expired");//SLOAD
+        require(maskChoice(choice, mask, msg.sender, maskTimestamp, false, maskBlockNo) == gameId, "RockPaperScissors::reveal:masked choice does not match");        
   
         finish(gameId, resolve(choice, game.opponentChoice), game.creator, game.opponent, game.stake);
         delete games[gameId];
     }  
 
-    function settle(uint gameId) public  {
+    function settle(bytes32  gameId) public  {
         require(block.timestamp > games[gameId].revealDeadline);
         Game storage game = games[gameId];
         finish(gameId, resolve(game.creatorChoice, game.opponentChoice), game.creator, game.opponent, game.stake);// 5 * SLOAD
         delete games[gameId]; 
     }
+    
+    function finish(bytes32  gameId, Outcome outcome, address creator, address opponent, uint pay) internal  {
+        bool isDraw = outcome == Outcome.DRAW;
+        bool isNone = outcome == Outcome.NONE;
 
-    function finish(uint gameId, Outcome outcome, address creator, address opponent, uint pay) internal  {
-        bool isDraw = outcome == Outcome.DRAW;  
-
-        pay = isDraw ? pay : pay.add(pay);        
-   
-        if((isDraw || outcome == Outcome.WIN) && pay != 0){
+        uint owed = (isDraw || isNone) ? pay : pay.add(pay);   
+        
+        if((isDraw || isNone || outcome == Outcome.WIN) && pay != 0){
             uint creatorBalance = winnings[creator]; //SLOAD
-            uint newCreatorBalance = creatorBalance.add(pay);
+            uint newCreatorBalance = owed.add(creatorBalance);
             winnings[creator] = newCreatorBalance; //SSTORE                
             emit LogWinningsBalanceChanged(creator, creatorBalance, newCreatorBalance);
         }
         if((isDraw || outcome == Outcome.LOSE) && pay != 0){
             uint opponentBalance = winnings[opponent]; //SLOAD
-            uint newOpponentBalance =opponentBalance.add(pay);
+            uint newOpponentBalance = owed.add(opponentBalance);
             winnings[opponent] = newOpponentBalance; //SSTORE
             emit LogWinningsBalanceChanged(opponent, opponentBalance, newOpponentBalance);
         }        
 
-        emit LogGameFinished(gameId, outcome, pay);
+        emit LogGameFinished(gameId, outcome, owed, msg.sender);
     }   
 
-    function resolve(Choice creatorChoice, Choice opponentChoice) public pure  returns(Outcome outcome){
-        if(opponentChoice == Choice.NONE){
-            return Outcome.WIN;
-        }else if(opponentChoice != Choice.NONE && creatorChoice == Choice.NONE){
-            return Outcome.LOSE;
-        }else{        
-            return Outcome(SafeMath.mod(uint(creatorChoice).add(3).sub(uint(opponentChoice)), 3).add(1));
+    function resolve(Choice creatorChoice, Choice opponentChoice) public pure returns(Outcome outcome){
+        if(creatorChoice != Choice.NONE )
+        {
+            return opponentChoice != Choice.NONE ? 
+                Outcome(SafeMath.mod(uint(creatorChoice).add(3).sub(uint(opponentChoice)), 3).add(1))
+               :Outcome.WIN;
+        }
+        else
+        {
+            return opponentChoice != Choice.NONE ? 
+                Outcome.LOSE
+               :Outcome.NONE;
         }
     }
 

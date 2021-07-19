@@ -45,13 +45,13 @@ contract("RockPaperScissors", (accounts) => {
       maskedChoice = await rockPaperScissors.contract.methods
         .maskChoice(CHOICE.ROCK, mask, creator, block.timestamp, true, block.number)
         .call({ from: creator });
+      gameId = maskedChoice;
 
       /*create game*/
       const txReceipt = await rockPaperScissors.contract.methods
         .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
         .send({ from: creator, value: MIN_STAKE, gas: gas });
 
-      gameId = (await rockPaperScissors.latestGameId.call()).toNumber();
       const game = await rockPaperScissors.games.call(gameId);
       assert.isDefined(game, "beforeEach - game has not been written to storage");
 
@@ -59,38 +59,26 @@ contract("RockPaperScissors", (accounts) => {
       await timeHelper.advanceTimeAndBlock(timestampSkipSeconds);
     });
 
-    function revertSituations() {
-      return [
-        {
-          gameId: gameId,
-          choice: CHOICE.NONE,
-          msgsender: opponent,
-          msgvalue: MIN_STAKE,
-          error: "",
-        },
-        {
-          gameId: gameId,
-          choice: CHOICE.SCISSORS,
-          msgsender: somebody,
-          msgvalue: MIN_STAKE,
-          error: "",
-        },
-        {
-          gameId: gameId,
-          choice: CHOICE.SCISSORS,
-          msgsender: opponent,
-          msgvalue: MIN_STAKE > 0 ? MIN_STAKE - 1 : 0,
-          error: "RockPaperScissors::play:Insuffcient balance to stake",
-        },
-      ];
-    }
+    it("should revert given CHOICE.NONE as choice", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods.play(gameId, CHOICE.NONE).send({ from: opponent, value: MIN_STAKE, gas: gas })
+      );
+    });
 
-    it("reverts when given invalid parameters", async () => {
-      revertSituations().forEach(async (d) => {
+    it("should revert given incorrect opponent address", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods.play(gameId, CHOICE.SCISSORS).send({ from: somebody, value: MIN_STAKE, gas: gas })
+      );
+    });
+
+    it("should revert sent with insuffcient balance to stake", async () => {
+      if (MIN_STAKE > 0) {
         await truffleAssert.reverts(
-          rockPaperScissors.contract.methods.play(gameId, d.choice).send({ from: d.msgsender, value: d.msgvalue, gas: gas })
+          rockPaperScissors.contract.methods
+            .play(gameId, CHOICE.SCISSORS)
+            .send({ from: somebody, value: MIN_STAKE - 1, gas: gas })
         );
-      });
+      }
     });
 
     it("should play and set choice to storage", async () => {

@@ -6,7 +6,7 @@ const { assert } = chai;
 
 contract("RockPaperScissors", (accounts) => {
   let snapShotId;
-  before("sdfs", async () => {
+  before("", async () => {
     it("TestRPC  must have adequate number of addresses", async () => {
       assert.isAtLeast(accounts.length, 2, "Test has enough addresses");
     });
@@ -31,6 +31,8 @@ contract("RockPaperScissors", (accounts) => {
   describe("maskChoice tests", () => {
     before("deploy a fresh contract", async () => {
       rockPaperScissors = await RockPaperScissors.new({ from: deployer });
+      MASK_TIMESTAMP_SLACK = (await rockPaperScissors.MASK_TIMESTAMP_SLACK.call()).toNumber();
+      MASK_BLOCK_SLACK = (await rockPaperScissors.MASK_BLOCK_SLACK.call()).toNumber();
     });
 
     it("should generate a valid maskedChoice - Happy path", async () => {
@@ -62,97 +64,84 @@ contract("RockPaperScissors", (accounts) => {
       assert.strictEqual(web3SoliditySha3Value, soliditykeccak256Value, "web3 and keccak256 generated value don't match");
     });
 
-    async function revertSituations() {
+    it("reverts when maskTimestamp is above maximum allowed", async () => {
       const block = await web3.eth.getBlock("latest");
-      MASK_TIMESTAMP_SLACK = (await rockPaperScissors.MASK_TIMESTAMP_SLACK.call()).toNumber();
-      MASK_BLOCK_SLACK = (await rockPaperScissors.MASK_BLOCK_SLACK.call()).toNumber();
-      const no = block.number;
-      const stamp = block.timestamp;
-      return [
-        {
-          choice: CHOICE.PAPER,
-          mask: mask,
-          masker: maskerAddress,
-          timestamp: stamp + MASK_TIMESTAMP_SLACK + 1,
-          maskingOnly: true,
-          blockNo: no,
-          error: "RockPaperScissors::maskChoice:maskTimestamp above maximum, use latest block timestamp",
-        },
-        {
-          choice: CHOICE.PAPER,
-          mask: mask,
-          masker: maskerAddress,
-          timestamp: stamp - MASK_TIMESTAMP_SLACK - 1,
-          maskingOnly: true,
-          blockNo: no,
-          error: "RockPaperScissors::maskChoice:maskTimestamp below minimum, use latest block timestamp",
-        },
-        {
-          choice: CHOICE.PAPER,
-          mask: mask,
-          masker: maskerAddress,
-          timestamp: stamp,
-          maskingOnly: true,
-          blockNo: no + MASK_BLOCK_SLACK + 1,
-          error: "RockPaperScissors::maskChoice:blockNo is invalid",
-        },
-        {
-          choice: CHOICE.PAPER,
-          mask: mask,
-          masker: maskerAddress,
-          timestamp: stamp,
-          maskingOnly: true,
-          blockNo: no - MASK_BLOCK_SLACK - 1,
-          error: "RockPaperScissors::maskChoice:blockNo is invalid",
-        },
-        {
-          choice: CHOICE.PAPER,
-          mask: mask,
-          masker: maskerAddress,
-          timestamp: stamp,
-          maskingOnly: false,
-          blockNo: no,
-          error: "RockPaperScissors::maskChoice:Invalid maskTimestamp for reveal",
-        },
-        {
-          choice: CHOICE.NONE,
-          mask: mask,
-          masker: maskerAddress,
-          timestamp: stamp,
-          maskingOnly: true,
-          blockNo: no,
-          error: "RockPaperScissors::maskChoice:game move choice can not be NONE",
-        },
-        {
-          choice: CHOICE.PAPER,
-          mask: NULL_BYTES,
-          masker: maskerAddress,
-          timestamp: stamp,
-          maskingOnly: true,
-          blockNo: no,
-          error: "RockPaperScissors::maskChoice:mask can not be empty",
-        },
-        {
-          choice: CHOICE.PAPER,
-          mask: mask,
-          masker: NULL_ADDRESS,
-          timestamp: stamp,
-          maskingOnly: true,
-          blockNo: no,
-          error: "RockPaperScissors::maskChoice:masker can not be null address",
-        },
-      ];
-    }
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .maskChoice(CHOICE.ROCK, mask, maskerAddress, block.timestamp + MASK_TIMESTAMP_SLACK + 1, true, block.number)
+          .call({ from: maskerAddress }),
+        "RockPaperScissors::maskChoice:maskTimestamp above maximum, use latest block timestamp"
+      );
+    });
 
-    it("reverts when given invalid parameters", async () => {
-      const data = await revertSituations();
-      data.forEach(async (d) => {
-        await truffleAssert.reverts(
-          rockPaperScissors.contract.methods
-            .maskChoice(d.choice, d.mask, d.masker, d.timestamp, d.maskingOnly, d.blockNo)
-            .call({ from: maskerAddress })
-        );
-      });
+    it("reverts when maskTimestamp is below minimum allowed", async () => {
+      const block = await web3.eth.getBlock("latest");
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .maskChoice(CHOICE.PAPER, mask, maskerAddress, block.timestamp - MASK_TIMESTAMP_SLACK - 1, true, block.number)
+          .call({ from: maskerAddress }),
+        "RockPaperScissors::maskChoice:maskTimestamp below minimum, use latest block timestamp"
+      );
+    });
+
+    it("reverts when blockNo is above allowed slack", async () => {
+      const block = await web3.eth.getBlock("latest");
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .maskChoice(CHOICE.PAPER, mask, maskerAddress, block.timestamp, true, block.number + MASK_BLOCK_SLACK + 1)
+          .call({ from: maskerAddress }),
+        "RockPaperScissors::maskChoice:blockNo is invalid"
+      );
+    });
+
+    it("reverts when blockNo is below allowed slack", async () => {
+      const block = await web3.eth.getBlock("latest");
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .maskChoice(CHOICE.PAPER, mask, maskerAddress, block.timestamp, true, block.number - MASK_BLOCK_SLACK - 1)
+          .call({ from: maskerAddress }),
+        "RockPaperScissors::maskChoice:blockNo is invalid"
+      );
+    });
+
+    it("reverts when maskTimestamp for reveal is invalid", async () => {
+      const block = await web3.eth.getBlock("latest");
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .maskChoice(CHOICE.PAPER, mask, maskerAddress, block.timestamp, false, block.number)
+          .call({ from: maskerAddress }),
+        "RockPaperScissors::maskChoice:Invalid maskTimestamp for reveal"
+      );
+    });
+
+    it("reverts when choice is NONE", async () => {
+      const block = await web3.eth.getBlock("latest");
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .maskChoice(CHOICE.NONE, mask, maskerAddress, block.timestamp, true, block.number)
+          .call({ from: maskerAddress }),
+        "RockPaperScissors::maskChoice:game move choice can not be NONE"
+      );
+    });
+
+    it("reverts when mask can is empty", async () => {
+      const block = await web3.eth.getBlock("latest");
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .maskChoice(CHOICE.SCISSORS, NULL_BYTES, maskerAddress, block.timestamp, true, block.number)
+          .call({ from: maskerAddress }),
+        "RockPaperScissors::maskChoice:mask can not be empty"
+      );
+    });
+
+    it("reverts when opponent address is empty", async () => {
+      const block = await web3.eth.getBlock("latest");
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .maskChoice(CHOICE.SCISSORS, mask, NULL_ADDRESS, block.timestamp, true, block.number)
+          .call({ from: maskerAddress }),
+        "RockPaperScissors::maskChoice:masker can not be null address"
+      );
     });
 
     after(async () => {

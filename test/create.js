@@ -42,6 +42,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MIN_CUTOFF_INTERVAL,
         msgsender: creator,
         msgvalue: MIN_STAKE,
+        error: "creator and opponent address can not identical",
       },
       {
         opponent: NULL_ADDRESS,
@@ -50,6 +51,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MIN_CUTOFF_INTERVAL,
         msgsender: creator,
         msgvalue: MIN_STAKE,
+        error: "oppponent address can not be empty",
       },
       {
         opponent: opponent,
@@ -58,6 +60,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MIN_CUTOFF_INTERVAL,
         msgsender: creator,
         msgvalue: MIN_STAKE,
+        error: "masked choice can not be empty",
       },
       {
         opponent: opponent,
@@ -66,6 +69,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MIN_CUTOFF_INTERVAL,
         msgsender: creator,
         msgvalue: MIN_STAKE > 0 ? MIN_STAKE - 1 : 0,
+        error: "insufficent balance to stake",
       },
       {
         opponent: opponent,
@@ -74,6 +78,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MIN_CUTOFF_INTERVAL - 1,
         msgsender: creator,
         msgvalue: MIN_STAKE,
+        error: "cut off deadline interval below minimum",
       },
       {
         opponent: opponent,
@@ -82,6 +87,7 @@ contract("RockPaperScissors", (accounts) => {
         cutOff: MAX_CUTOFF_INTERVAL + 1,
         msgsender: creator,
         msgvalue: MIN_STAKE,
+        error: "cut off deadline interval above maximum",
       },
     ];
   }
@@ -99,20 +105,71 @@ contract("RockPaperScissors", (accounts) => {
         .call({ from: creator });
     });
 
-    it("reverts when given invalid parameters", async () => {
-      revertSituations().forEach(async (d) => {
+    it("reverts oppponent address is empty", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(NULL_ADDRESS, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+          .send({ from: creator, value: MIN_STAKE })
+      );
+    });
+
+    it("reverts when creator and opponent address can not identical ", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(creator, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+          .send({ from: creator, value: MIN_STAKE })
+      );
+    });
+
+    it("reverts when masked choice is empty", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(opponent, NULL_BYTES, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+          .send({ from: creator, value: MIN_STAKE })
+      );
+    });
+
+    it("reverts when given insufficent balance to stake", async () => {
+      if (MIN_STAKE > 0) {
         await truffleAssert.reverts(
           rockPaperScissors.contract.methods
-            .create(d.opponent, d.maskedChoice, d.toStake, d.cutOff)
-            .send({ from: d.msgsender, value: d.msgvalue })
+            .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+            .send({ from: creator, value: MIN_STAKE - 1 })
         );
-      });
+      }
+    });
+
+    it("reverts if a game with gameId already exists", async () => {
+      //Arrange
+      await rockPaperScissors.contract.methods
+        .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+        .send({ from: creator, value: MIN_STAKE, gas });
+
+      //Assert
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
+          .send({ from: creator, value: MIN_STAKE, gas })
+      );
+    });
+
+    it("reverts when cut off deadline interval is below minimum", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL - 1)
+          .send({ from: creator, value: MIN_STAKE })
+      );
+    });
+
+    it("reverts when cut off deadline interval is above maximum", async () => {
+      await truffleAssert.reverts(
+        rockPaperScissors.contract.methods
+          .create(opponent, maskedChoice, MIN_STAKE, MAX_CUTOFF_INTERVAL + 1)
+          .send({ from: creator, value: MIN_STAKE })
+      );
     });
 
     it("should create and set game to storage", async () => {
-      //Arrange
-      const priorId = (await rockPaperScissors.latestGameId.call()).toNumber();
-
       //Act
       const txReceipt = await rockPaperScissors.contract.methods
         .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
@@ -120,7 +177,7 @@ contract("RockPaperScissors", (accounts) => {
 
       //Assert
       assert.isDefined(txReceipt, "transaction is not mined");
-      const game = await rockPaperScissors.games.call(priorId + 1);
+      const game = await rockPaperScissors.games.call(maskedChoice);
       assert.isDefined(game, "game has not been written to storage");
       const txTimestamp = (await web3.eth.getBlock(txReceipt.blockNumber)).timestamp;
 
@@ -137,12 +194,11 @@ contract("RockPaperScissors", (accounts) => {
         .create(opponent, maskedChoice, MIN_STAKE, MIN_CUTOFF_INTERVAL)
         .send({ from: creator, value: MIN_STAKE, gas });
 
-      const gameId = await rockPaperScissors.latestGameId.call();
       const txTimestamp = (await web3.eth.getBlock(txReceipt.blockNumber)).timestamp;
 
       //Assert
       eventAssert.eventIsEmitted(txReceipt, "LogGameCreated");
-      eventAssert.parameterIsValid(txReceipt, "LogGameCreated", "gameId", gameId, "LogGameCreated gameId incorrect");
+      eventAssert.parameterIsValid(txReceipt, "LogGameCreated", "gameId", maskedChoice, "LogGameCreated gameId incorrect");
       eventAssert.parameterIsValid(txReceipt, "LogGameCreated", "opponent", opponent, "LogGameCreated opponent incorrect");
       eventAssert.parameterIsValid(
         txReceipt,
